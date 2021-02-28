@@ -19,9 +19,15 @@ To use a file (video or image) as input :
 
 ```python3 HandTracker.py -i filename```
 
-To run only the palm detection model (without hand landmarks), use *--no_lm* argument.
+To enable gesture recognition :
 
-Use keypress between 1 and 6 to enable/disable the display of hand features (palm bounding box, palm landmarks, hand landmarks, handedness,...)
+```python3 HandTracker.py -g```
+
+![Gesture recognition](img/gestures.gif)
+
+To run only the palm detection model (without hand landmarks), use *--no_lm* argument. Of course, gesture recognition is not possible in this mode.
+
+Use keypress between 1 and 7 to enable/disable the display of hand features (palm bounding box, palm landmarks, hand landmarks, handedness, gesture,...)
 
 
 

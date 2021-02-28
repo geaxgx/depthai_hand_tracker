@@ -289,3 +289,19 @@ def warp_rect_img(rect_points, img, w, h):
         dst = np.array([(0, 0), (h, 0), (h, w)], dtype=np.float32)
         mat = cv2.getAffineTransform(src, dst)
         return cv2.warpAffine(img, mat, (w, h))
+
+def distance(a, b):
+    """
+    a, b: 2 points in 3D (x,y,z)
+    """
+    return np.linalg.norm(a-b)
+
+def angle(a, b, c):
+    # https://stackoverflow.com/questions/35176451/python-code-to-calculate-angle-between-three-point-using-their-3d-coordinates
+    # a, b and c : points as np.array([x, y, z]) 
+    ba = a - b
+    bc = c - b
+    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    angle = np.arccos(cosine_angle)
+
+    return np.degrees(angle)

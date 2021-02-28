@@ -13,13 +13,15 @@ def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return resized.transpose(2,0,1)
 
 
+
 class HandTracker:
     def __init__(self, input_file=None,
                 pd_path="models/palm_detection.blob", 
                 pd_score_thresh=0.5, pd_nms_thresh=0.3,
                 use_lm=True,
                 lm_path="models/hand_landmark.blob",
-                lm_score_threshold=0.5):
+                lm_score_threshold=0.5,
+                use_gesture=False):
 
         self.camera = input_file is None
         self.pd_path = pd_path
@@ -28,6 +30,7 @@ class HandTracker:
         self.use_lm = use_lm
         self.lm_path = lm_path
         self.lm_score_threshold = lm_score_threshold
+        self.use_gesture = use_gesture
         
         if not self.camera:
             if input_file.endswith('.jpg') or input_file.endswith('.png') :
@@ -67,6 +70,7 @@ class HandTracker:
             self.show_handedness = False
             self.show_landmarks = True
             self.show_scores = False
+            self.show_gesture = self.use_gesture
         else:
             self.show_pd_box = True
             self.show_pd_kps = False
@@ -167,15 +171,82 @@ class HandTracker:
                         (int(r.pd_box[0] * self.video_size+10), int((r.pd_box[1]+r.pd_box[3])*self.video_size+60)), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (255,255,0), 2)
 
+    def recognize_gesture(self, r):           
+
+        # Finger states
+        # state: -1=unknown, 0=close, 1=open
+        d_3_5 = mpu.distance(r.landmarks[3], r.landmarks[5])
+        d_2_3 = mpu.distance(r.landmarks[2], r.landmarks[3])
+        angle0 = mpu.angle(r.landmarks[0], r.landmarks[1], r.landmarks[2])
+        angle1 = mpu.angle(r.landmarks[1], r.landmarks[2], r.landmarks[3])
+        angle2 = mpu.angle(r.landmarks[2], r.landmarks[3], r.landmarks[4])
+        r.thumb_angle = angle0+angle1+angle2
+        if angle0+angle1+angle2 > 460 and d_3_5 / d_2_3 > 1.2: 
+            r.thumb_state = 1
+        else:
+            r.thumb_state = 0
+
+        if r.landmarks[8][1] < r.landmarks[7][1] < r.landmarks[6][1]:
+            r.index_state = 1
+        elif r.landmarks[6][1] < r.landmarks[8][1]:
+            r.index_state = 0
+        else:
+            r.index_state = -1
+
+        if r.landmarks[12][1] < r.landmarks[11][1] < r.landmarks[10][1]:
+            r.middle_state = 1
+        elif r.landmarks[10][1] < r.landmarks[12][1]:
+            r.middle_state = 0
+        else:
+            r.middle_state = -1
+
+        if r.landmarks[16][1] < r.landmarks[15][1] < r.landmarks[14][1]:
+            r.ring_state = 1
+        elif r.landmarks[14][1] < r.landmarks[16][1]:
+            r.ring_state = 0
+        else:
+            r.ring_state = -1
+
+        if r.landmarks[20][1] < r.landmarks[19][1] < r.landmarks[18][1]:
+            r.little_state = 1
+        elif r.landmarks[18][1] < r.landmarks[20][1]:
+            r.little_state = 0
+        else:
+            r.little_state = -1
+
+        # Gesture
+        if r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
+            r.gesture = "FIVE"
+        elif r.thumb_state == 0 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "FIST"
+        elif r.thumb_state == 1 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "OK" 
+        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "PEACE"
+        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "ONE"
+        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "TWO"
+        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
+            r.gesture = "THREE"
+        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
+            r.gesture = "FOUR"
+        else:
+            r.gesture = None
+            
     def lm_postprocess(self, region, inference):
         region.lm_score = inference.getLayerFp16("Identity_1")[0]    
         region.handedness = inference.getLayerFp16("Identity_2")[0]
-        lm_raw = inference.getLayerFp16("Identity_dense/BiasAdd/Add")
+        lm_raw = np.array(inference.getLayerFp16("Identity_dense/BiasAdd/Add"))
+        
         lm = []
         for i in range(int(len(lm_raw)/3)):
-            # x,y,z -> keep x/w,y/h
-            lm.append([lm_raw[3*i]/self.lm_input_length, lm_raw[3*i+1]/self.lm_input_length])
+            # x,y,z -> x/w,y/h,z/w (here h=w)
+            lm.append(lm_raw[3*i:3*(i+1)]/self.lm_input_length)
         region.landmarks = lm
+        if self.use_gesture: self.recognize_gesture(region)
+
+
     
     def lm_render(self, frame, region):
         if region.lm_score > self.lm_score_threshold:
@@ -195,8 +266,24 @@ class HandTracker:
                                     [0, 17, 18, 19, 20]]
                 lines = [np.array([lm_xy[point] for point in line]) for line in list_connections]
                 cv2.polylines(frame, lines, False, (255, 0, 0), 2, cv2.LINE_AA)
-                for x,y in lm_xy:
-                    cv2.circle(frame, (x, y), 6, (0,128,255), -1)
+                if self.use_gesture:
+                    # color depending on finger state (1=open, 0=close, -1=unknown)
+                    color = { 1: (0,255,0), 0: (0,0,255), -1:(0,255,255)}
+                    radius = 6
+                    cv2.circle(frame, (lm_xy[0][0], lm_xy[0][1]), radius, color[-1], -1)
+                    for i in range(1,5):
+                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.thumb_state], -1)
+                    for i in range(5,9):
+                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.index_state], -1)
+                    for i in range(9,13):
+                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.middle_state], -1)
+                    for i in range(13,17):
+                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.ring_state], -1)
+                    for i in range(17,21):
+                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.little_state], -1)
+                else:
+                    for x,y in lm_xy:
+                        cv2.circle(frame, (x, y), 6, (0,128,255), -1)
             if self.show_handedness:
                 cv2.putText(frame, f"RIGHT {region.handedness:.2f}" if region.handedness > 0.5 else f"LEFT {1-region.handedness:.2f}", 
                         (int(region.pd_box[0] * self.video_size+10), int((region.pd_box[1]+region.pd_box[3])*self.video_size+20)), 
@@ -205,6 +292,10 @@ class HandTracker:
                 cv2.putText(frame, f"Landmark score: {region.lm_score:.2f}", 
                         (int(region.pd_box[0] * self.video_size+10), int((region.pd_box[1]+region.pd_box[3])*self.video_size+90)), 
                         cv2.FONT_HERSHEY_PLAIN, 2, (255,255,0), 2)
+            if self.use_gesture and self.show_gesture:
+                cv2.putText(frame, region.gesture, (int(region.pd_box[0]*self.video_size+10), int(region.pd_box[1]*self.video_size-50)), 
+                        cv2.FONT_HERSHEY_PLAIN, 3, (255,255,255), 3)
+
         
 
     def run(self):
@@ -309,6 +400,8 @@ class HandTracker:
                 self.show_handedness = not self.show_handedness
             elif key == ord('6'):
                 self.show_scores = not self.show_scores
+            elif key == ord('7'):
+                self.show_gesture = not self.show_gesture
 
         # Print some stats
         if not self.camera:
@@ -323,7 +416,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, help="Path to video or image file to use as input (if not specified, use OAK color camera)")
     parser.add_argument('--no_lm', action="store_true", help="only the palm detection model is run, not the hand landmark model")
+    parser.add_argument('-g', '--gesture', action="store_true", help="enable gesture recognition")
     args = parser.parse_args()
 
-    ht = HandTracker(input_file=args.input, use_lm= not args.no_lm)
+    ht = HandTracker(input_file=args.input, use_lm= not args.no_lm, use_gesture=args.gesture)
     ht.run()
