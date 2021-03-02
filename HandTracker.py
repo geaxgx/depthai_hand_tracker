@@ -96,7 +96,6 @@ class HandTracker:
             cam.setFps(30)
             cam.setInterleaved(False)
             cam.setBoardSocket(dai.CameraBoardSocket.RGB)
-            cam.setVideoSize(self.video_size, self.video_size)
             cam_out = pipeline.createXLinkOut()
             cam_out.setStreamName("cam_out")
             # Link video output to host for higher resolution
@@ -328,9 +327,7 @@ class HandTracker:
             self.fps.update()
             if self.camera:
                 in_video = q_video.get()
-                # Convert NV12 to BGR
-                yuv = in_video.getData().reshape((in_video.getHeight() * 3 // 2, in_video.getWidth()))
-                video_frame = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV12)
+                video_frame = in_video.getCvFrame()
             else:
                 if self.image_mode:
                     vid_frame = self.img
