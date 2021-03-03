@@ -106,7 +106,7 @@ class HandTracker:
         pd_nn = pipeline.createNeuralNetwork()
         pd_nn.setBlobPath(str(Path(self.pd_path).resolve().absolute()))
         # Increase threads for detection
-        # self.pd_nn.setNumInferenceThreads(2)
+        # pd_nn.setNumInferenceThreads(2)
         # Specify that network takes latest arriving frame in non-blocking manner
         # Palm detection input                 
         if self.camera:
@@ -405,16 +405,23 @@ class HandTracker:
             print(f"# video files frames                 : {seq_num}")
             print(f"# palm detection inferences received : {nb_pd_inferences}")
             print(f"# hand landmark inferences received  : {nb_lm_inferences}")
-            print(f"Palm detection round trip            : {glob_pd_rtrip_time/nb_pd_inferences*1000:.0f} ms")
-            print(f"Hand landmark round trip             : {glob_lm_rtrip_time/nb_pd_inferences*1000:.0f} ms")
+            print(f"Palm detection round trip            : {glob_pd_rtrip_time/nb_pd_inferences*1000:.1f} ms")
+            print(f"Hand landmark round trip             : {glob_lm_rtrip_time/nb_lm_inferences*1000:.1f} ms")
            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', type=str, help="Path to video or image file to use as input (if not specified, use OAK color camera)")
-    parser.add_argument('--no_lm', action="store_true", help="only the palm detection model is run, not the hand landmark model")
-    parser.add_argument('-g', '--gesture', action="store_true", help="enable gesture recognition")
+    parser.add_argument('-i', '--input', type=str, 
+                        help="Path to video or image file to use as input (if not specified, use OAK color camera)")
+    parser.add_argument("--pd_m", default="models/palm_detection.blob", type=str,
+                        help="Path to a blob file for palm detection model (default=%(default)s)")
+    parser.add_argument('--no_lm', action="store_true", 
+                        help="only the palm detection model is run, not the hand landmark model")
+    parser.add_argument("--lm_m", default="models/hand_landmark.blob", type=str,
+                        help="Path to a blob file for landmark model (default=%(default)s)")
+    parser.add_argument('-g', '--gesture', action="store_true", 
+                        help="enable gesture recognition")
     args = parser.parse_args()
 
-    ht = HandTracker(input_file=args.input, use_lm= not args.no_lm, use_gesture=args.gesture)
+    ht = HandTracker(input_file=args.input, pd_path=args.pd_m, use_lm= not args.no_lm, lm_path=args.lm_m, use_gesture=args.gesture)
     ht.run()

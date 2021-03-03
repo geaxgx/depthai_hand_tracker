@@ -2,6 +2,8 @@
 
 Running Google Mediapipe Hand Tracking models on [DepthAI](https://docs.luxonis.com/en/gen2/) hardware (OAK-1, OAK-D, ...)
 
+There is a version for OpenVINO there : [openvino_hand_tracker](https://github.com/geaxgx/openvino_hand_tracker)
+
 ![Demo](img/hand_tracker.gif)
 ## Install
 
@@ -45,7 +47,14 @@ You can find the models *palm_detector.blob* and *hand_landmark.blob* under the 
 cd resources/models
 ./convert_models.sh
 ```
-The *convert_models.sh* converts the tflite models in tensorflow (.pb), then converts the pb file into Openvino IR format (.xml and .bin), and finally converts the IR files in MyriadX format (.blob). You can modify this script, if for instance you want to change the number of shaves used by the models.
+The *convert_models.sh* converts the tflite models in tensorflow (.pb), then converts the pb file into Openvino IR format (.xml and .bin), and finally converts the IR files in MyriadX format (.blob). 
+
+By default, the number of SHAVES associated with the blob files is 4. In case you want to generate new blobs with different number of shaves, you can use the script *gen_blob_shave.sh*:
+```
+# Example: to generate blobs for 6 shaves
+./gen_blob_shave.sh -m pd -n 6   # will generate palm_detection_sh6.blob
+./gen_blob_shave.sh -m lm -n 6   # will generate hand_landmark_sh6.blob
+```
 
 
 
