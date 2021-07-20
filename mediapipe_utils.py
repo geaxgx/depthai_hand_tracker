@@ -1,11 +1,34 @@
 import cv2
 import numpy as np
 from collections import namedtuple
-from math import ceil, sqrt, exp, pi, floor, sin, cos, atan2
+from math import ceil, sqrt, exp, pi, floor, sin, cos, atan2, gcd
 
 
 class HandRegion:
-    def __init__(self, pd_score, pd_box, pd_kps=0):
+    """
+        Attributes:
+        pd_score : detection score
+        pd_box : detection box [x, y, w, h], normalized [0,1] in the squared image
+        pd_kps : detection keypoints coordinates [x, y], normalized [0,1] in the squared image
+        rect_x_center, rect_y_center : center coordinates of the rotated bounding rectangle, normalized [0,1] in the squared image
+        rect_w, rect_h : width and height of the rotated bounding rectangle, normalized in the squared image (may be > 1)
+        rotation : rotation angle of rotated bounding rectangle with y-axis in radian
+        rect_x_center_a, rect_y_center_a : center coordinates of the rotated bounding rectangle, in pixels in the squared image
+        rect_w, rect_h : width and height of the rotated bounding rectangle, in pixels in the squared image
+        rect_points : list of the 4 points coordinates of the rotated bounding rectangle, in pixels 
+                expressed in the squared image during processing,
+                expressed in the source rectangular image when returned to the user
+        lm_score: global landmark score
+        norm_landmarks : 3D landmarks coordinates in the rotated bounding rectangle, normalized [0,1]
+        landmarks : model 3D landmarks coordinates in pixel in the source rectangular image
+                (here, 3D means virtual coordinates infered by the model)
+        handedness: float between 0. and 1., > 0.5 for right hand, < 0.5 for left hand,
+        label: "left" or "right", handedness translated in a string,
+        xyz: real 3D world coordinates of the wrist landmark, or of the palm center (if landmarks are not used),
+        xyz_zone: (left, top, right, bottom), pixel coordinates in the source rectangular image 
+                of the rectangular zone used to estimate the depth
+        """
+    def __init__(self, pd_score=None, pd_box=None, pd_kps=None):
         self.pd_score = pd_score # Palm detection score 
         self.pd_box = pd_box # Palm detection box [x, y, w, h] normalized
         self.pd_kps = pd_kps # Palm detection keypoints
@@ -97,8 +120,23 @@ def generate_anchors(options):
         layer_id = last_same_stride_layer
     return np.array(anchors)
 
+def generate_handtracker_anchors():
+    # https://github.com/google/mediapipe/blob/master/mediapipe/modules/palm_detection/palm_detection_cpu.pbtxt
+    anchor_options = SSDAnchorOptions(num_layers=4, 
+                            min_scale=0.1484375,
+                            max_scale=0.75,
+                            input_size_height=128,
+                            input_size_width=128,
+                            anchor_offset_x=0.5,
+                            anchor_offset_y=0.5,
+                            strides=[8, 16, 16, 16],
+                            aspect_ratios= [1.0],
+                            reduce_boxes_in_lowest_layer=False,
+                            interpolated_scale_aspect_ratio=1.0,
+                            fixed_anchor_size=True)
+    return generate_anchors(anchor_options)
 
-def decode_bboxes(score_thresh, scores, bboxes, anchors):
+def decode_bboxes(score_thresh, scores, bboxes, anchors, best_only=False):
     """
     wi, hi : NN input shape
     mediapipe/calculators/tflite/tflite_tensors_to_detections_calculator.cc
@@ -139,11 +177,19 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors):
     """
     regions = []
     scores = 1 / (1 + np.exp(-scores))
-    detection_mask = scores > score_thresh
-    det_scores = scores[detection_mask]
-    if det_scores.size == 0: return regions
-    det_bboxes = bboxes[detection_mask]
-    det_anchors = anchors[detection_mask]
+    if best_only:
+        best_id = np.argmax(scores)
+        if scores[best_id] < score_thresh: return regions
+        det_scores = scores[best_id:best_id+1]
+        det_bboxes2 = bboxes[best_id:best_id+1]
+        det_anchors = anchors[best_id:best_id+1]
+    else:
+        detection_mask = scores > score_thresh
+        det_scores = scores[detection_mask]
+        if det_scores.size == 0: return regions
+        det_bboxes2 = bboxes[detection_mask]
+        det_anchors = anchors[detection_mask]
+
     scale = 128 # x_scale, y_scale, w_scale, h_scale
 
     # cx, cy, w, h = bboxes[i,:4]
@@ -151,7 +197,7 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors):
     # cy = cy * anchor.h / hi + anchor.y_center
     # lx = lx * anchor.w / wi + anchor.x_center 
     # ly = ly * anchor.h / hi + anchor.y_center
-    det_bboxes = det_bboxes* np.tile(det_anchors[:,2:4], 9) / scale + np.tile(det_anchors[:,0:2],9)
+    det_bboxes = det_bboxes2* np.tile(det_anchors[:,2:4], 9) / scale + np.tile(det_anchors[:,0:2],9)
     # w = w * anchor.w / wi (in the prvious line, we add anchor.x_center and anchor.y_center to w and h, we need to substract them now)
     # h = h * anchor.h / hi
     det_bboxes[:,2:4] = det_bboxes[:,2:4] - det_anchors[:,0:2]
@@ -161,6 +207,9 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors):
     for i in range(det_bboxes.shape[0]):
         score = det_scores[i]
         box = det_bboxes[i,0:4]
+        # Decoded detection boxes could have negative values for width/height due
+        # to model prediction. Filter out those boxes
+        if box[2] < 0 or box[3] < 0: continue
         kps = []
         # 0 : wrist
         # 1 : index finger joint
@@ -226,7 +275,7 @@ def detections_to_rect(regions):
         rotation = target_angle - atan2(-(y1 - y0), x1 - x0)
         region.rotation = normalize_radians(rotation)
         
-def rotated_rect_to_points(cx, cy, w, h, rotation, wi, hi):
+def rotated_rect_to_points(cx, cy, w, h, rotation):
     b = cos(rotation) * 0.5
     a = sin(rotation) * 0.5
     points = []
@@ -239,7 +288,7 @@ def rotated_rect_to_points(cx, cy, w, h, rotation, wi, hi):
     p3x = int(2*cx - p1x)
     p3y = int(2*cy - p1y)
     p0x, p0y, p1x, p1y = int(p0x), int(p0y), int(p1x), int(p1y)
-    return [(p0x,p0y), (p1x,p1y), (p2x,p2y), (p3x,p3y)]
+    return [[p0x,p0y], [p1x,p1y], [p2x,p2y], [p3x,p3y]]
 
 def rect_transformation(regions, w, h):
     """
@@ -261,8 +310,9 @@ def rect_transformation(regions, w, h):
     #     square_long: true
     #     }
     # }
-    scale_x = 2.6
-    scale_y = 2.6
+    # IMHO 2.9 is better than 2.6. With 2.6, it may happen that finger tips stay outside of the bouding rotated rectangle
+    scale_x = 2.9
+    scale_y = 2.9
     shift_x = 0
     shift_y = -0.5
     for region in regions:
@@ -282,7 +332,50 @@ def rect_transformation(regions, w, h):
         long_side = max(width * w, height * h)
         region.rect_w_a = long_side * scale_x
         region.rect_h_a = long_side * scale_y
-        region.rect_points = rotated_rect_to_points(region.rect_x_center_a, region.rect_y_center_a, region.rect_w_a, region.rect_h_a, region.rotation, w, h)
+        region.rect_points = rotated_rect_to_points(region.rect_x_center_a, region.rect_y_center_a, region.rect_w_a, region.rect_h_a, region.rotation)
+
+def hand_landmarks_to_rect(hand):
+    # Calculates the ROI for the next frame from the current hand landmarks
+    id_wrist = 0
+    id_index_mcp = 5
+    id_middle_mcp = 9
+    id_ring_mcp =13
+    
+    lms_xy =  hand.landmarks[:,:2]
+    # print(lms_xy)
+    # Compute rotation
+    x0, y0 = lms_xy[id_wrist]
+    x1, y1 = 0.25 * (lms_xy[id_index_mcp] + lms_xy[id_ring_mcp]) + 0.5 * lms_xy[id_middle_mcp]
+    rotation = 0.5 * pi - atan2(y0 - y1, x1 - x0)
+    rotation = normalize_radians(rotation)
+    # Now we work only on a subset of the landmarks
+    ids_for_bounding_box = [0, 1, 2, 3, 5, 6, 9, 10, 13, 14, 17, 18]
+    lms_xy = lms_xy[ids_for_bounding_box]
+    # Find center of the boundaries of landmarks
+    axis_aligned_center = 0.5 * (np.min(lms_xy, axis=0) + np.max(lms_xy, axis=0))
+    # Find boundaries of rotated landmarks
+    original = lms_xy - axis_aligned_center
+    c, s = np.cos(rotation), np.sin(rotation)
+    rot_mat = np.array(((c, -s), (s, c)))
+    projected = original.dot(rot_mat)
+    min_proj = np.min(projected, axis=0)
+    max_proj = np.max(projected, axis=0)
+    projected_center = 0.5 * (min_proj + max_proj)
+    center = rot_mat.dot(projected_center) + axis_aligned_center
+    width, height = max_proj - min_proj
+    next_hand = HandRegion()
+    next_hand.rect_w_a = next_hand.rect_h_a = 2 * max(width, height)
+    next_hand.rect_x_center_a = center[0] + 0.1 * height * s
+    next_hand.rect_y_center_a = center[1] - 0.1 * height * c
+    next_hand.rotation = rotation
+    next_hand.rect_points = rotated_rect_to_points(next_hand.rect_x_center_a, next_hand.rect_y_center_a, next_hand.rect_w_a, next_hand.rect_h_a, next_hand.rotation)
+    return next_hand
+
+
+
+
+
+    
 
 def warp_rect_img(rect_points, img, w, h):
         src = np.array(rect_points[1:], dtype=np.float32) # rect_points[0] is left bottom point !
@@ -305,3 +398,47 @@ def angle(a, b, c):
     angle = np.arccos(cosine_angle)
 
     return np.degrees(angle)
+
+def find_isp_scale_params(size, resolution, is_height=True):
+    """
+    Find closest valid size close to 'size' and and the corresponding parameters to setIspScale()
+    This function is useful to work around a bug in depthai where ImageManip is scrambling images that have an invalid size
+    resolution: sensor resolution (width, height)
+    is_height : boolean that indicates if the value 'size' represents the height or the width of the image
+    Returns: valid size, (numerator, denominator)
+    """
+    # We want size >= 288 (first compatible size > lm_input_size)
+    if size < 288:
+        size = 288
+
+    width, height = resolution
+
+    # We are looking for the list on integers that are divisible by 16 and
+    # that can be written like n/d where n <= 16 and d <= 63
+    if is_height:
+        reference = height 
+        other = width
+    else:
+        reference = width 
+        other = height
+    size_candidates = {}
+    for s in range(288,reference,16):
+        f = gcd(reference, s)
+        n = s//f
+        d = reference//f
+        if n <= 16 and d <= 63 and int(round(other * n / d) % 2 == 0):
+            size_candidates[s] = (n, d)
+            
+    # What is the candidate size closer to 'size' ?
+    min_dist = -1
+    for s in size_candidates:
+        dist = abs(size - s)
+        if min_dist == -1:
+            min_dist = dist
+            candidate = s
+        else:
+            if dist > min_dist: break
+            candidate = s
+            min_dist = dist
+    return candidate, size_candidates[candidate]
+

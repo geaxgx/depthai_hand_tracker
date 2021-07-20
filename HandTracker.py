@@ -5,115 +5,333 @@ import depthai as dai
 import cv2
 from pathlib import Path
 from FPS import FPS, now
-import argparse
+import time
+import sys
 
-# def to_planar(arr: np.ndarray, shape: tuple) -> list:
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
+LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
+
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
-    resized = cv2.resize(arr, shape)
-    return resized.transpose(2,0,1)
+    return cv2.resize(arr, shape).transpose(2,0,1).flatten()
 
 
 
 class HandTracker:
-    def __init__(self, input_file=None,
-                pd_path="models/palm_detection.blob", 
+    """
+    Mediapipe Hand Tracker for depthai
+    Arguments:
+    - input_src: frame source, 
+                    - "rgb" or None: OAK* internal color camera,
+                    - "rgb_laconic": same as "rgb" but without sending the frames to the host (Edge mode only),
+                    - a file path of an image or a video,
+                    - an integer (eg 0) for a webcam id,
+    - pd_model: palm detection model blob file (if None, takes the default value PALM_DETECTION_MODEL),
+    - pd_score: confidence score to determine whether a detection is reliable (a float between 0 and 1).
+    - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
+    - lm_model: landmark model blob file
+                    - None : the default blob file LANDMARK_MODEL,
+                    - a path of a blob file. 
+    - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
+    - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
+    - xyz : boolean, when True get the (x, y, z) coords of the detected hands (if the device supports depth measure).
+    - crop : boolean which indicates if square cropping on source images is applied or not
+    - internal_fps : when using the internal color camera as input source, set its FPS to this value (calling setFps()).
+    - resolution : sensor resolution "full" (1920x1080) or "ultra" (3840x2160),
+    - internal_frame_height : when using the internal color camera, set the frame height (calling setIspScale()).
+                            The width is calculated accordingly to height and depends on value of 'crop'
+    - stats : boolean, when True, display some statistics when exiting.   
+    - trace: boolean, when True print some debug messages (only in Edge mode)   
+    """
+    def __init__(self, input_src=None,
+                pd_model=PALM_DETECTION_MODEL, 
                 pd_score_thresh=0.5, pd_nms_thresh=0.3,
                 use_lm=True,
-                lm_path="models/hand_landmark.blob",
-                lm_score_threshold=0.5,
-                use_gesture=False):
+                lm_model=LANDMARK_MODEL,
+                lm_score_thresh=0.5,
+                solo=False,
+                xyz=False,
+                crop=False,
+                internal_fps=28,
+                resolution="full",
+                internal_frame_height=640,
+                use_gesture=False,
+                stats=False,
+                trace=False
+                ):
 
-        self.camera = input_file is None
-        self.pd_path = pd_path
+        self.pd_model = pd_model
+        print(f"Palm detection blob file : {self.pd_model}")
+        if use_lm:
+            self.lm_model = lm_model
+            print(f"Landmark blob file : {self.lm_model}")
         self.pd_score_thresh = pd_score_thresh
         self.pd_nms_thresh = pd_nms_thresh
         self.use_lm = use_lm
-        self.lm_path = lm_path
-        self.lm_score_threshold = lm_score_threshold
+        self.lm_score_thresh = lm_score_thresh
+        if not use_lm and solo:
+            print("Warning: solo mode desactivated when not using landmarks")
+            self.solo = False
+        else:
+            self.solo = solo
+        self.xyz = False
+        self.crop = crop 
+        self.internal_fps = internal_fps     
+        self.stats = stats
         self.use_gesture = use_gesture
-        
-        if not self.camera:
-            if input_file.endswith('.jpg') or input_file.endswith('.png') :
-                self.image_mode = True
-                self.img = cv2.imread(input_file)
-                self.video_size = np.min(self.img.shape[:2])
+
+        self.device = dai.Device()
+
+        if input_src == None or input_src == "rgb" or input_src == "rgb_laconic":
+            # Note that here (in Host mode), specifying "rgb_laconic" has no effect
+            # Color camera frames are systematically transferred to the host
+            self.input_type = "rgb" # OAK* internal color camera
+            self.internal_fps = internal_fps 
+            print(f"Internal camera FPS set to: {self.internal_fps}")
+            if resolution == "full":
+                self.resolution = (1920, 1080)
+            elif resolution == "ultra":
+                self.resolution = (3840, 2160)
             else:
-                self.image_mode = False
-                self.cap = cv2.VideoCapture(input_file)
-                width  = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
-                height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
-                self.video_size = int(min(width, height))
+                print(f"Error: {resolution} is not a valid resolution !")
+                sys.exit()
+            print("Sensor resolution:", self.resolution)
+
+            if xyz:
+                # Check if the device supports stereo
+                cameras = self.device.getConnectedCameras()
+                if dai.CameraBoardSocket.LEFT in cameras and dai.CameraBoardSocket.RIGHT in cameras:
+                    self.xyz = True
+                else:
+                    print("Warning: depth unavailable on this device, 'xyz' argument is ignored")
+
+            self.video_fps = self.internal_fps # Used when saving the output in a video file. Should be close to the real fps
+            
+            if self.crop:
+                self.frame_size, self.scale_nd = mpu.find_isp_scale_params(internal_frame_height, self.resolution)
+                self.img_h = self.img_w = self.frame_size
+                self.pad_w = self.pad_h = 0
+                self.crop_w = (int(round(self.resolution[0] * self.scale_nd[0] / self.scale_nd[1])) - self.img_w) // 2
+            else:
+                width, self.scale_nd = mpu.find_isp_scale_params(internal_frame_height * self.resolution[0] / self.resolution[1], self.resolution, is_height=False)
+                self.img_h = int(round(self.resolution[1] * self.scale_nd[0] / self.scale_nd[1]))
+                self.img_w = int(round(self.resolution[0] * self.scale_nd[0] / self.scale_nd[1]))
+                self.pad_h = (self.img_w - self.img_h) // 2
+                self.pad_w = 0
+                self.frame_size = self.img_w
+                self.crop_w = 0
+
+            print(f"Internal camera image size: {self.img_w} x {self.img_h} - crop_w:{self.crop_w} pad_h: {self.pad_h}")
+
+        elif input_src.endswith('.jpg') or input_src.endswith('.png') :
+            self.input_type= "image"
+            self.img = cv2.imread(input_src)
+            self.video_fps = 25
+            self.img_h, self.img_w = self.img.shape[:2]
+        else:
+            self.input_type = "video"
+            if input_src.isdigit():
+                input_type = "webcam"
+                input_src = int(input_src)
+            self.cap = cv2.VideoCapture(input_src)
+            self.video_fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+            self.img_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.img_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            print("Video FPS:", self.video_fps)
         
+        if self.input_type != "rgb":
+            print(f"Original frame size: {self.img_w}x{self.img_h}")
+            if self.crop:
+                self.frame_size = min(self.img_w, self.img_h) # // 16 * 16
+            else:
+                self.frame_size = max(self.img_w, self.img_h) #// 16 * 16
+            self.crop_w = max((self.img_w - self.frame_size) // 2, 0)
+            if self.crop_w: print("Cropping on width :", self.crop_w)
+            self.crop_h = max((self.img_h - self.frame_size) // 2, 0)
+            if self.crop_h: print("Cropping on height :", self.crop_h)
+
+            self.pad_w = max((self.frame_size - self.img_w) // 2, 0)
+            if self.pad_w: print("Padding on width :", self.pad_w)
+            self.pad_h = max((self.frame_size - self.img_h) // 2, 0)
+            if self.pad_h: print("Padding on height :", self.pad_h)
+                     
+            print(f"Frame working size: {self.img_w}x{self.img_h}")
+        
+
         # Create SSD anchors 
-        # https://github.com/google/mediapipe/blob/master/mediapipe/modules/palm_detection/palm_detection_cpu.pbtxt
-        anchor_options = mpu.SSDAnchorOptions(num_layers=4, 
-                                min_scale=0.1484375,
-                                max_scale=0.75,
-                                input_size_height=128,
-                                input_size_width=128,
-                                anchor_offset_x=0.5,
-                                anchor_offset_y=0.5,
-                                strides=[8, 16, 16, 16],
-                                aspect_ratios= [1.0],
-                                reduce_boxes_in_lowest_layer=False,
-                                interpolated_scale_aspect_ratio=1.0,
-                                fixed_anchor_size=True)
-        self.anchors = mpu.generate_anchors(anchor_options)
+        self.anchors = mpu.generate_handtracker_anchors()
         self.nb_anchors = self.anchors.shape[0]
         print(f"{self.nb_anchors} anchors have been created")
 
-        # Rendering flags
-        if self.use_lm:
-            self.show_pd_box = False
-            self.show_pd_kps = False
-            self.show_rot_rect = False
-            self.show_handedness = False
-            self.show_landmarks = True
-            self.show_scores = False
-            self.show_gesture = self.use_gesture
-        else:
-            self.show_pd_box = True
-            self.show_pd_kps = False
-            self.show_rot_rect = False
-            self.show_scores = False
-        
+        # Define and start pipeline
+        usb_speed = self.device.getUsbSpeed()
+        self.device.startPipeline(self.create_pipeline())
+        print(f"Pipeline started - USB speed: {str(usb_speed).split('.')[-1]}")
 
+        # Define data queues 
+        if self.input_type == "rgb":
+            self.q_video = self.device.getOutputQueue(name="cam_out", maxSize=1, blocking=False)
+            self.q_pd_out = self.device.getOutputQueue(name="pd_out", maxSize=1, blocking=False)
+            if self.solo:
+                self.q_pre_pd_manip_cfg = self.device.getInputQueue(name="pre_pd_manip_cfg")
+            if self.use_lm:
+                self.q_lm_out = self.device.getOutputQueue(name="lm_out", maxSize=2, blocking=False)
+                self.q_lm_in = self.device.getInputQueue(name="lm_in")
+            if self.xyz:
+                self.q_spatial_data = self.device.getOutputQueue(name="spatial_data_out", maxSize=4, blocking=False)
+                self.q_spatial_config = self.device.getInputQueue("spatial_calc_config_in")
+
+        else:
+            self.q_pd_in = self.device.getInputQueue(name="pd_in")
+            self.q_pd_out = self.device.getOutputQueue(name="pd_out", maxSize=4, blocking=True)
+            if self.use_lm:
+                self.q_lm_out = self.device.getOutputQueue(name="lm_out", maxSize=4, blocking=True)
+                self.q_lm_in = self.device.getInputQueue(name="lm_in")
+
+        self.fps = FPS()
+
+        self.nb_pd_inferences = 0
+        self.nb_lm_inferences = 0
+        self.nb_spatial_requests = 0
+        self.glob_pd_rtrip_time = 0
+        self.glob_lm_rtrip_time = 0
+        self.glob_spatial_rtrip_time = 0
+
+        if self.solo:
+            self.use_previous_landmarks = False
+
+        
     def create_pipeline(self):
         print("Creating pipeline...")
         # Start defining a pipeline
         pipeline = dai.Pipeline()
-        pipeline.setOpenVINOVersion(version = dai.OpenVINO.Version.VERSION_2021_2)
+        pipeline.setOpenVINOVersion(version = dai.OpenVINO.Version.VERSION_2021_4)
         self.pd_input_length = 128
 
-        if self.camera:
+        if self.input_type == "rgb":
             # ColorCamera
             print("Creating Color Camera...")
             cam = pipeline.createColorCamera()
-            cam.setPreviewSize(self.pd_input_length, self.pd_input_length)
-            cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-            # Crop video to square shape (palm detection takes square image as input)
-            self.video_size = min(cam.getVideoSize())
-            cam.setVideoSize(self.video_size, self.video_size)
-            cam.setFps(30)
-            cam.setInterleaved(False)
+            if self.resolution[0] == 1920:
+                cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+            else:
+                cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4_K)
             cam.setBoardSocket(dai.CameraBoardSocket.RGB)
+            cam.setInterleaved(False)
+            cam.setIspScale(self.scale_nd[0], self.scale_nd[1])
+            cam.setFps(self.internal_fps)
+            if self.solo:
+                # In solo mode, we need to control the flow of frames
+                # going to the palm detection model.
+                # The control is made from the host via the inputConfig port of 
+                # ImageManip node
+                pre_pd_manip = pipeline.createImageManip()
+                pre_pd_manip.setMaxOutputFrameSize(self.pd_input_length*self.pd_input_length*3)
+                pre_pd_manip.setWaitForConfigInput(True)
+                pre_pd_manip.inputImage.setQueueSize(1)
+                pre_pd_manip.inputImage.setBlocking(False)
+                cam.preview.link(pre_pd_manip.inputImage)
+                if self.crop:
+                    cam.setVideoSize(self.frame_size, self.frame_size)
+                    # cam.setPreviewSize(self.frame_size, self.frame_size)
+                    cam.setPreviewSize(self.pd_input_length, self.pd_input_length)
+                else: 
+                    cam.setVideoSize(self.img_w, self.img_h)
+                    cam.setPreviewSize(self.img_w, self.img_h)
+                # cfg_pre_pd : the config that will be send by the host to the pre_pd_manip
+                self.cfg_pre_pd = dai.ImageManipConfig()
+                self.cfg_pre_pd.setResizeThumbnail(self.pd_input_length, self.pd_input_length)
+                
+                pre_pd_manip_cfg_in = pipeline.createXLinkIn()
+                pre_pd_manip_cfg_in.setStreamName("pre_pd_manip_cfg")
+                pre_pd_manip_cfg_in.out.link(pre_pd_manip.inputConfig) 
+
+            else:
+                # In multi mode, no need to control the flow, but we may still need
+                # an ImageManip node for letterboxing (if crop is False)
+                if self.crop:
+                    cam.setVideoSize(self.frame_size, self.frame_size)
+                    cam.setPreviewSize(self.pd_input_length, self.pd_input_length)
+                else: 
+                    cam.setVideoSize(self.img_w, self.img_h)
+                    cam.setPreviewSize(self.img_w, self.img_h)
+                    # Letterboxing
+                    print("Creating letterboxing image manip...")
+                    # pre_pd_manip = pipeline.create(dai.node.ImageManip)
+                    pre_pd_manip = pipeline.createImageManip()
+                    pre_pd_manip.initialConfig.setResizeThumbnail(self.pd_input_length, self.pd_input_length)
+                    pre_pd_manip.setMaxOutputFrameSize(3*self.pd_input_length**2)
+                    pre_pd_manip.inputImage.setQueueSize(1)
+                    pre_pd_manip.inputImage.setBlocking(False)
+                    cam.preview.link(pre_pd_manip.inputImage)
+
             cam_out = pipeline.createXLinkOut()
             cam_out.setStreamName("cam_out")
-            # Link video output to host for higher resolution
+            cam_out.input.setQueueSize(1)
+            cam_out.input.setBlocking(False)
             cam.video.link(cam_out.input)
+
+            if self.xyz:
+                print("Creating MonoCameras, Stereo and SpatialLocationCalculator nodes...")
+                # For now, RGB needs fixed focus to properly align with depth.
+                # This value was used during calibration
+                cam.initialControl.setManualFocus(130)
+
+                mono_resolution = dai.MonoCameraProperties.SensorResolution.THE_400_P
+                left = pipeline.createMonoCamera()
+                left.setBoardSocket(dai.CameraBoardSocket.LEFT)
+                left.setResolution(mono_resolution)
+                left.setFps(self.internal_fps)
+
+                right = pipeline.createMonoCamera()
+                right.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+                right.setResolution(mono_resolution)
+                right.setFps(self.internal_fps)
+
+                stereo = pipeline.createStereoDepth()
+                stereo.setConfidenceThreshold(230)
+                # LR-check is required for depth alignment
+                stereo.setLeftRightCheck(True)
+                stereo.setDepthAlign(dai.CameraBoardSocket.RGB)
+                stereo.setSubpixel(False)  # subpixel True -> latency
+
+                spatial_location_calculator = pipeline.createSpatialLocationCalculator()
+                spatial_location_calculator.setWaitForConfigInput(True)
+                spatial_location_calculator.inputDepth.setBlocking(False)
+                spatial_location_calculator.inputDepth.setQueueSize(1)
+
+                spatial_data_out = pipeline.createXLinkOut()
+                spatial_data_out.setStreamName("spatial_data_out")
+                spatial_data_out.input.setQueueSize(1)
+                spatial_data_out.input.setBlocking(False)
+
+                spatial_calc_config_in = pipeline.createXLinkIn()
+                spatial_calc_config_in.setStreamName("spatial_calc_config_in")
+
+                left.out.link(stereo.left)
+                right.out.link(stereo.right)    
+
+                stereo.depth.link(spatial_location_calculator.inputDepth)
+
+                spatial_location_calculator.out.link(spatial_data_out.input)
+                spatial_calc_config_in.out.link(spatial_location_calculator.inputConfig)
 
         # Define palm detection model
         print("Creating Palm Detection Neural Network...")
         pd_nn = pipeline.createNeuralNetwork()
-        pd_nn.setBlobPath(str(Path(self.pd_path).resolve().absolute()))
+        pd_nn.setBlobPath(self.pd_model)
         # Increase threads for detection
         # pd_nn.setNumInferenceThreads(2)
         # Specify that network takes latest arriving frame in non-blocking manner
         # Palm detection input                 
-        if self.camera:
+        if self.input_type == "rgb":
             pd_nn.input.setQueueSize(1)
             pd_nn.input.setBlocking(False)
-            cam.preview.link(pd_nn.input)
+            if self.crop:
+                cam.preview.link(pd_nn.input)
+            else:
+                pre_pd_manip.out.link(pd_nn.input)
         else:
             pd_in = pipeline.createXLinkIn()
             pd_in.setStreamName("pd_in")
@@ -128,7 +346,7 @@ class HandTracker:
         if self.use_lm:
             print("Creating Hand Landmark Neural Network...")          
             lm_nn = pipeline.createNeuralNetwork()
-            lm_nn.setBlobPath(str(Path(self.lm_path).resolve().absolute()))
+            lm_nn.setBlobPath(self.lm_model)
             lm_nn.setNumInferenceThreads(1)
             # Hand landmark input
             self.lm_input_length = 224
@@ -142,74 +360,89 @@ class HandTracker:
             
         print("Pipeline created.")
         return pipeline        
-
-    
+   
     def pd_postprocess(self, inference):
         scores = np.array(inference.getLayerFp16("classificators"), dtype=np.float16) # 896
         bboxes = np.array(inference.getLayerFp16("regressors"), dtype=np.float16).reshape((self.nb_anchors,18)) # 896x18
         # Decode bboxes
-        self.regions = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors)
-        # Non maximum suppression
-        self.regions = mpu.non_max_suppression(self.regions, self.pd_nms_thresh)
+        self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, best_only=self.solo)
+        # Non maximum suppression (not needed if solo)
+        if not self.solo:
+            self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)
         if self.use_lm:
-            mpu.detections_to_rect(self.regions)
-            mpu.rect_transformation(self.regions, self.video_size, self.video_size)
+            mpu.detections_to_rect(self.hands)
+            mpu.rect_transformation(self.hands, self.frame_size, self.frame_size)
 
-    def pd_render(self, frame):
-        for r in self.regions:
-            if self.show_pd_box:
-                box = (np.array(r.pd_box) * self.video_size).astype(int)
-                cv2.rectangle(frame, (box[0], box[1]), (box[0]+box[2], box[1]+box[3]), (0,255,0), 2)
-            if self.show_pd_kps:
-                for i,kp in enumerate(r.pd_kps):
-                    x = int(kp[0] * self.video_size)
-                    y = int(kp[1] * self.video_size)
-                    cv2.circle(frame, (x, y), 6, (0,0,255), -1)
-                    cv2.putText(frame, str(i), (x, y+12), cv2.FONT_HERSHEY_PLAIN, 1.5, (0,255,0), 2)
-            if self.show_scores:
-                cv2.putText(frame, f"Palm score: {r.pd_score:.2f}", 
-                        (int(r.pd_box[0] * self.video_size+10), int((r.pd_box[1]+r.pd_box[3])*self.video_size+60)), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (255,255,0), 2)
+
+    def lm_postprocess(self, hand, inference):
+        hand.lm_score = inference.getLayerFp16("Identity_1")[0]  
+        if hand.lm_score > self.lm_score_thresh:  
+            hand.handedness = inference.getLayerFp16("Identity_2")[0]
+            hand.label = "right" if hand.handedness > 0.5 else "left"
+            lm_raw = np.array(inference.getLayerFp16("Identity_dense/BiasAdd/Add")).reshape(-1,3)
+            # hand.norm_landmarks contains the normalized ([0:1]) 3D coordinates of landmarks in the square rotated body bounding box
+            hand.norm_landmarks = lm_raw / self.lm_input_length
+            # hand.norm_landmarks[:,2] /= 0.4
+
+            # Now calculate hand.landmarks = the landmarks in the image coordinate system (in pixel)
+            src = np.array([(0, 0), (1, 0), (1, 1)], dtype=np.float32)
+            dst = np.array([ (x, y) for x,y in hand.rect_points[1:]], dtype=np.float32) # hand.rect_points[0] is left bottom point and points going clockwise!
+            mat = cv2.getAffineTransform(src, dst)
+            lm_xy = np.expand_dims(hand.norm_landmarks[:,:2], axis=0)
+            # lm_z = hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4
+            hand.landmarks = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int)
+
+            if self.use_gesture: self.recognize_gesture(hand)
+            # # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
+
+            # if self.pad_h > 0:
+            #     hand.landmarks[:,1] -= self.pad_h
+            #     for i in range(len(hand.rect_points)):
+            #         hand.rect_points[i][1] -= self.pad_h
+            # if self.pad_w > 0:
+            #     hand.landmarks[:,0] -= self.pad_w
+            #     for i in range(len(hand.rect_points)):
+            #         hand.rect_points[i][0] -= self.pad_w
 
     def recognize_gesture(self, r):           
 
         # Finger states
         # state: -1=unknown, 0=close, 1=open
-        d_3_5 = mpu.distance(r.landmarks[3], r.landmarks[5])
-        d_2_3 = mpu.distance(r.landmarks[2], r.landmarks[3])
-        angle0 = mpu.angle(r.landmarks[0], r.landmarks[1], r.landmarks[2])
-        angle1 = mpu.angle(r.landmarks[1], r.landmarks[2], r.landmarks[3])
-        angle2 = mpu.angle(r.landmarks[2], r.landmarks[3], r.landmarks[4])
+        d_3_5 = mpu.distance(r.norm_landmarks[3], r.norm_landmarks[5])
+        d_2_3 = mpu.distance(r.norm_landmarks[2], r.norm_landmarks[3])
+        angle0 = mpu.angle(r.norm_landmarks[0], r.norm_landmarks[1], r.norm_landmarks[2])
+        angle1 = mpu.angle(r.norm_landmarks[1], r.norm_landmarks[2], r.norm_landmarks[3])
+        angle2 = mpu.angle(r.norm_landmarks[2], r.norm_landmarks[3], r.norm_landmarks[4])
         r.thumb_angle = angle0+angle1+angle2
         if angle0+angle1+angle2 > 460 and d_3_5 / d_2_3 > 1.2: 
             r.thumb_state = 1
         else:
             r.thumb_state = 0
 
-        if r.landmarks[8][1] < r.landmarks[7][1] < r.landmarks[6][1]:
+        if r.norm_landmarks[8][1] < r.norm_landmarks[7][1] < r.norm_landmarks[6][1]:
             r.index_state = 1
-        elif r.landmarks[6][1] < r.landmarks[8][1]:
+        elif r.norm_landmarks[6][1] < r.norm_landmarks[8][1]:
             r.index_state = 0
         else:
             r.index_state = -1
 
-        if r.landmarks[12][1] < r.landmarks[11][1] < r.landmarks[10][1]:
+        if r.norm_landmarks[12][1] < r.norm_landmarks[11][1] < r.norm_landmarks[10][1]:
             r.middle_state = 1
-        elif r.landmarks[10][1] < r.landmarks[12][1]:
+        elif r.norm_landmarks[10][1] < r.norm_landmarks[12][1]:
             r.middle_state = 0
         else:
             r.middle_state = -1
 
-        if r.landmarks[16][1] < r.landmarks[15][1] < r.landmarks[14][1]:
+        if r.norm_landmarks[16][1] < r.norm_landmarks[15][1] < r.norm_landmarks[14][1]:
             r.ring_state = 1
-        elif r.landmarks[14][1] < r.landmarks[16][1]:
+        elif r.norm_landmarks[14][1] < r.norm_landmarks[16][1]:
             r.ring_state = 0
         else:
             r.ring_state = -1
 
-        if r.landmarks[20][1] < r.landmarks[19][1] < r.landmarks[18][1]:
+        if r.norm_landmarks[20][1] < r.norm_landmarks[19][1] < r.norm_landmarks[18][1]:
             r.little_state = 1
-        elif r.landmarks[18][1] < r.landmarks[20][1]:
+        elif r.norm_landmarks[18][1] < r.norm_landmarks[20][1]:
             r.little_state = 0
         else:
             r.little_state = -1
@@ -234,195 +467,149 @@ class HandTracker:
         else:
             r.gesture = None
             
-    def lm_postprocess(self, region, inference):
-        region.lm_score = inference.getLayerFp16("Identity_1")[0]    
-        region.handedness = inference.getLayerFp16("Identity_2")[0]
-        lm_raw = np.array(inference.getLayerFp16("Identity_dense/BiasAdd/Add"))
-        
-        lm = []
-        for i in range(int(len(lm_raw)/3)):
-            # x,y,z -> x/w,y/h,z/w (here h=w)
-            lm.append(lm_raw[3*i:3*(i+1)]/self.lm_input_length)
-        region.landmarks = lm
-        if self.use_gesture: self.recognize_gesture(region)
+    def spatial_loc_roi_from_palm_center(self, hand):
+        half_size = int(hand.pd_box[2] * self.frame_size / 2)
+        zone_size = max(half_size//2, 8)
+        rect_center = dai.Point2f(int(hand.pd_box[0]*self.frame_size) + half_size - zone_size//2 + self.crop_w, int(hand.pd_box[1]*self.frame_size) + half_size - zone_size//2 - self.pad_h)
+        rect_size = dai.Size2f(zone_size, zone_size)
+        return dai.Rect(rect_center, rect_size)
 
+    def spatial_loc_roi_from_wrist_landmark(self, hand):
+        zone_size = max(int(hand.rect_w_a / 10), 8)
+        rect_center = dai.Point2f(*(hand.landmarks[0]-np.array((zone_size//2 - self.crop_w, zone_size//2 + self.pad_h))))
+        rect_size = dai.Size2f(zone_size, zone_size)
+        return dai.Rect(rect_center, rect_size)
 
-    
-    def lm_render(self, frame, region):
-        if region.lm_score > self.lm_score_threshold:
-            if self.show_rot_rect:
-                cv2.polylines(frame, [np.array(region.rect_points)], True, (0,255,255), 2, cv2.LINE_AA)
-            if self.show_landmarks:
-                src = np.array([(0, 0), (1, 0), (1, 1)], dtype=np.float32)
-                dst = np.array([ (x, y) for x,y in region.rect_points[1:]], dtype=np.float32) # region.rect_points[0] is left bottom point !
-                mat = cv2.getAffineTransform(src, dst)
-                lm_xy = np.expand_dims(np.array([(l[0], l[1]) for l in region.landmarks]), axis=0)
-                lm_xy = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int)
-                list_connections = [[0, 1, 2, 3, 4], 
-                                    [0, 5, 6, 7, 8], 
-                                    [5, 9, 10, 11, 12],
-                                    [9, 13, 14 , 15, 16],
-                                    [13, 17],
-                                    [0, 17, 18, 19, 20]]
-                lines = [np.array([lm_xy[point] for point in line]) for line in list_connections]
-                cv2.polylines(frame, lines, False, (255, 0, 0), 2, cv2.LINE_AA)
-                if self.use_gesture:
-                    # color depending on finger state (1=open, 0=close, -1=unknown)
-                    color = { 1: (0,255,0), 0: (0,0,255), -1:(0,255,255)}
-                    radius = 6
-                    cv2.circle(frame, (lm_xy[0][0], lm_xy[0][1]), radius, color[-1], -1)
-                    for i in range(1,5):
-                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.thumb_state], -1)
-                    for i in range(5,9):
-                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.index_state], -1)
-                    for i in range(9,13):
-                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.middle_state], -1)
-                    for i in range(13,17):
-                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.ring_state], -1)
-                    for i in range(17,21):
-                        cv2.circle(frame, (lm_xy[i][0], lm_xy[i][1]), radius, color[region.little_state], -1)
-                else:
-                    for x,y in lm_xy:
-                        cv2.circle(frame, (x, y), 6, (0,128,255), -1)
-            if self.show_handedness:
-                cv2.putText(frame, f"RIGHT {region.handedness:.2f}" if region.handedness > 0.5 else f"LEFT {1-region.handedness:.2f}", 
-                        (int(region.pd_box[0] * self.video_size+10), int((region.pd_box[1]+region.pd_box[3])*self.video_size+20)), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0) if region.handedness > 0.5 else (0,0,255), 2)
-            if self.show_scores:
-                cv2.putText(frame, f"Landmark score: {region.lm_score:.2f}", 
-                        (int(region.pd_box[0] * self.video_size+10), int((region.pd_box[1]+region.pd_box[3])*self.video_size+90)), 
-                        cv2.FONT_HERSHEY_PLAIN, 2, (255,255,0), 2)
-            if self.use_gesture and self.show_gesture:
-                cv2.putText(frame, region.gesture, (int(region.pd_box[0]*self.video_size+10), int(region.pd_box[1]*self.video_size-50)), 
-                        cv2.FONT_HERSHEY_PLAIN, 3, (255,255,255), 3)
+    def query_xyz(self, spatial_loc_roi_func):
+        conf_datas = []
+        for h in self.hands:
+            conf_data = dai.SpatialLocationCalculatorConfigData()
+            conf_data.depthThresholds.lowerThreshold = 100
+            conf_data.depthThresholds.upperThreshold = 10000
+            conf_data.roi = spatial_loc_roi_func(h)
+            conf_datas.append(conf_data)
+        if len(conf_datas) > 0:
+            cfg = dai.SpatialLocationCalculatorConfig()
+            cfg.setROIs(conf_datas)
+            
+            spatial_rtrip_time = now()
+            self.q_spatial_config.send(cfg)
 
-        
+            # Receives spatial locations
+            spatial_data = self.q_spatial_data.get().getSpatialLocations()
+            self.glob_spatial_rtrip_time += now() - spatial_rtrip_time
+            self.nb_spatial_requests += 1
+            for i,sd in enumerate(spatial_data):
+                self.hands[i].xyz_zone =  [
+                    int(sd.config.roi.topLeft().x) - self.crop_w,
+                    int(sd.config.roi.topLeft().y),
+                    int(sd.config.roi.bottomRight().x) - self.crop_w,
+                    int(sd.config.roi.bottomRight().y)
+                    ]
+                self.hands[i].xyz = [
+                    sd.spatialCoordinates.x,
+                    sd.spatialCoordinates.y,
+                    sd.spatialCoordinates.z
+                    ]
 
-    def run(self):
+    def next_frame(self):
 
-        device = dai.Device(self.create_pipeline())
-        device.startPipeline()
-
-        # Define data queues 
-        if self.camera:
-            q_video = device.getOutputQueue(name="cam_out", maxSize=1, blocking=False)
-            q_pd_out = device.getOutputQueue(name="pd_out", maxSize=1, blocking=False)
-            if self.use_lm:
-                q_lm_out = device.getOutputQueue(name="lm_out", maxSize=2, blocking=False)
-                q_lm_in = device.getInputQueue(name="lm_in")
-        else:
-            q_pd_in = device.getInputQueue(name="pd_in")
-            q_pd_out = device.getOutputQueue(name="pd_out", maxSize=4, blocking=True)
-            if self.use_lm:
-                q_lm_out = device.getOutputQueue(name="lm_out", maxSize=4, blocking=True)
-                q_lm_in = device.getInputQueue(name="lm_in")
-
-        self.fps = FPS(mean_nb_frames=20)
-
-        seq_num = 0
-        nb_pd_inferences = 0
-        nb_lm_inferences = 0
-        glob_pd_rtrip_time = 0
-        glob_lm_rtrip_time = 0
-        while True:
-            self.fps.update()
-            if self.camera:
-                in_video = q_video.get()
-                video_frame = in_video.getCvFrame()
+        self.fps.update()
+        if self.input_type == "rgb":
+            if self.solo and not self.use_previous_landmarks:
+                self.q_pre_pd_manip_cfg.send(self.cfg_pre_pd)
+            in_video = self.q_video.get()
+            video_frame = in_video.getCvFrame()
+            if self.pad_h:
+                square_frame = cv2.copyMakeBorder(video_frame, self.pad_h, self.pad_h, self.pad_w, self.pad_w, cv2.BORDER_CONSTANT)
             else:
-                if self.image_mode:
-                    vid_frame = self.img
-                else:
-                    ok, vid_frame = self.cap.read()
-                    if not ok:
-                        break
-                h, w = vid_frame.shape[:2]
-                dx = (w - self.video_size) // 2
-                dy = (h - self.video_size) // 2
-                video_frame = vid_frame[dy:dy+self.video_size, dx:dx+self.video_size]
+                square_frame = video_frame
+        else:
+            if self.input_type == "image":
+                frame = self.img.copy()
+            else:
+                ok, frame = self.cap.read()
+                if not ok:
+                    return None, None
+            # Cropping and/or padding of the video frame
+            video_frame = frame[self.crop_h:self.crop_h+self.frame_size, self.crop_w:self.crop_w+self.frame_size]
+            if self.pad_h or self.pad_w:
+                square_frame = cv2.copyMakeBorder(video_frame, self.pad_h, self.pad_h, self.pad_w, self.pad_w, cv2.BORDER_CONSTANT)
+            else:
+                square_frame = video_frame
+
+            if not self.solo or not self.use_previous_landmarks:
                 frame_nn = dai.ImgFrame()
-                frame_nn.setSequenceNum(seq_num)
+                frame_nn.setTimestamp(time.monotonic())
                 frame_nn.setWidth(self.pd_input_length)
                 frame_nn.setHeight(self.pd_input_length)
-                frame_nn.setData(to_planar(video_frame, (self.pd_input_length, self.pd_input_length)))
-                q_pd_in.send(frame_nn)
+                frame_nn.setData(to_planar(square_frame, (self.pd_input_length, self.pd_input_length)))
+                self.q_pd_in.send(frame_nn)
                 pd_rtrip_time = now()
 
-                seq_num += 1
-
-            annotated_frame = video_frame.copy()
-
-            # Get palm detection
-            inference = q_pd_out.get()
-            if not self.camera: glob_pd_rtrip_time += now() - pd_rtrip_time
+        # Get palm detection
+        if not self.solo or not self.use_previous_landmarks:
+            inference = self.q_pd_out.get()
+            if self.input_type != "rgb": 
+                self.glob_pd_rtrip_time += now() - pd_rtrip_time
             self.pd_postprocess(inference)
-            self.pd_render(annotated_frame)
-            nb_pd_inferences += 1
+            self.nb_pd_inferences += 1   
+        else:
+            self.hands = [self.hand_from_landmarks]
 
-            # Hand landmarks
-            if self.use_lm:
-                for i,r in enumerate(self.regions):
-                    img_hand = mpu.warp_rect_img(r.rect_points, video_frame, self.lm_input_length, self.lm_input_length)
-                    nn_data = dai.NNData()   
-                    nn_data.setLayer("input_1", to_planar(img_hand, (self.lm_input_length, self.lm_input_length)))
-                    q_lm_in.send(nn_data)
-                    if i == 0: lm_rtrip_time = now() # We measure only for the first region
-                
-                # Retrieve hand landmarks
-                for i,r in enumerate(self.regions):
-                    inference = q_lm_out.get()
-                    if i == 0: glob_lm_rtrip_time += now() - lm_rtrip_time
-                    self.lm_postprocess(r, inference)
-                    self.lm_render(annotated_frame, r)
-                    nb_lm_inferences += 1
+        # Hand landmarks, send requests
+        if self.use_lm:
+            for i,h in enumerate(self.hands):
+                img_hand = mpu.warp_rect_img(h.rect_points, square_frame, self.lm_input_length, self.lm_input_length)
+                nn_data = dai.NNData()   
+                nn_data.setLayer("input_1", to_planar(img_hand, (self.lm_input_length, self.lm_input_length)))
+                self.q_lm_in.send(nn_data)
+                if i == 0: lm_rtrip_time = now() # We measure only for the first hand
 
-                
-            self.fps.display(annotated_frame, orig=(50,50),color=(240,180,100))
-            cv2.imshow("video", annotated_frame)
+            for i,h in enumerate(self.hands):
+                inference = self.q_lm_out.get()
+                if i == 0: self.glob_lm_rtrip_time += now() - lm_rtrip_time
+                self.lm_postprocess(h, inference)
+                self.nb_lm_inferences += 1
+            self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
 
-            key = cv2.waitKey(1) 
-            if key == ord('q') or key == 27:
-                break
-            elif key == 32:
-                # Pause on space bar
-                cv2.waitKey(0)
-            elif key == ord('1'):
-                self.show_pd_box = not self.show_pd_box
-            elif key == ord('2'):
-                self.show_pd_kps = not self.show_pd_kps
-            elif key == ord('3'):
-                self.show_rot_rect = not self.show_rot_rect
-            elif key == ord('4'):
-                self.show_landmarks = not self.show_landmarks
-            elif key == ord('5'):
-                self.show_handedness = not self.show_handedness
-            elif key == ord('6'):
-                self.show_scores = not self.show_scores
-            elif key == ord('7'):
-                self.show_gesture = not self.show_gesture
+            if self.xyz:
+                self.query_xyz(self.spatial_loc_roi_from_wrist_landmark)
 
+            if self.solo:
+                if len(self.hands):
+                    # hand_from_landmarks will be used to initialize the bounding rotated rectangle (ROI) in the next frame
+                    self.hand_from_landmarks = mpu.hand_landmarks_to_rect(self.hands[0])
+                    self.use_previous_landmarks = True
+                else:
+                    self.use_previous_landmarks = False
+
+            # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
+            for hand in self.hands:
+                if self.pad_h > 0:
+                    hand.landmarks[:,1] -= self.pad_h
+                    for i in range(len(hand.rect_points)):
+                        hand.rect_points[i][1] -= self.pad_h
+                if self.pad_w > 0:
+                    hand.landmarks[:,0] -= self.pad_w
+                    for i in range(len(hand.rect_points)):
+                        hand.rect_points[i][0] -= self.pad_w
+        else: # not use_lm
+            if self.xyz:
+                self.query_xyz(self.spatial_loc_roi_from_palm_center)
+
+        return video_frame, self.hands
+
+
+    def exit(self):
+        self.device.close()
         # Print some stats
-        if not self.camera:
-            print(f"# video files frames                 : {seq_num}")
-            print(f"# palm detection inferences received : {nb_pd_inferences}")
-            print(f"# hand landmark inferences received  : {nb_lm_inferences}")
-            print(f"Palm detection round trip            : {glob_pd_rtrip_time/nb_pd_inferences*1000:.1f} ms")
-            print(f"Hand landmark round trip             : {glob_lm_rtrip_time/nb_lm_inferences*1000:.1f} ms")
-           
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', type=str, 
-                        help="Path to video or image file to use as input (if not specified, use OAK color camera)")
-    parser.add_argument("--pd_m", default="models/palm_detection.blob", type=str,
-                        help="Path to a blob file for palm detection model (default=%(default)s)")
-    parser.add_argument('--no_lm', action="store_true", 
-                        help="only the palm detection model is run, not the hand landmark model")
-    parser.add_argument("--lm_m", default="models/hand_landmark.blob", type=str,
-                        help="Path to a blob file for landmark model (default=%(default)s)")
-    parser.add_argument('-g', '--gesture', action="store_true", 
-                        help="enable gesture recognition")
-    args = parser.parse_args()
-
-    ht = HandTracker(input_file=args.input, pd_path=args.pd_m, use_lm= not args.no_lm, lm_path=args.lm_m, use_gesture=args.gesture)
-    ht.run()
+        if self.stats:
+            print(f"FPS : {self.fps.get_global():.1f} f/s (# frames = {self.fps.nb_frames()})")
+            print(f"# palm detection inferences received : {self.nb_pd_inferences}")
+            if self.use_lm: print(f"# hand landmark inferences received  : {self.nb_lm_inferences}")
+            if self.input_type != "rgb":
+                print(f"Palm detection round trip            : {self.glob_pd_rtrip_time/self.nb_pd_inferences*1000:.1f} ms")
+                print(f"Hand landmark round trip             : {self.glob_lm_rtrip_time/self.nb_lm_inferences*1000:.1f} ms")
+            if self.xyz:
+                print(f"Spatial location requests round trip : {self.glob_spatial_rtrip_time/self.nb_anchors*1000:.1f} ms")           
