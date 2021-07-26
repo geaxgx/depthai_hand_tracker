@@ -3,7 +3,7 @@
 This demo demonstrates the use of Open3d to visualize hands in pseudo-3D.
 Here, pseudo-3D means that the 3d information is inferred by the landmark model from 2D images (for depth-capable devices, depth is not used).
 For one hand, the z-component of its landmarks are relative to the wrist landmark. But we can't know the relative z positions of two wrist landmarks (from different hands).
-Notice that in practice, wrist landmarks are all drawn on the same vertical plane. So if a hand seems closer than the one, it is just because the former is drawn bigger !
+Notice that in practice, wrist landmarks are all drawn on the same vertical plane. So if a hand seems closer than the other one, it is just because the former is drawn bigger !
 
 Moreover, in solo mode (when we want to track only one hand at most), filtering is applied to the landmarks to reduce jittering.
 To use solo mode: `./demo.py -s` or `./demo.py -e` (edge mode)
