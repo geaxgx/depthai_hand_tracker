@@ -44,12 +44,11 @@ Tracker arguments:
 
 |Keypress|Function|
 |-|-|
-In OpenCV window:
+|**In OpenCV window:**|
 |*Esc* or q|Exit|
 |*space*|Pause|
 |s|Pause/unpause smoothing filter (if enabled at start)|
-<br>
-In Open3d window:
+|**In Open3d window:**|
 |Keypress|Function|
 |-|-|
 |o|Oscillating (rotating back and forth) of the view|

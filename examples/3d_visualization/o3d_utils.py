@@ -130,8 +130,7 @@ class Visu3D:
         self.move = "oscillate"
         self.angle = 0
         self.direction = 1
-        self.oscillate_angle = 200
-        
+        self.oscillate_angle = 200       
         self.geometries = []
 
     def set_view(self):
@@ -167,7 +166,6 @@ class Visu3D:
         self.geometries.append(grid)
 
     def create_camera(self):
-        # cam = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
         cam = o3d.geometry.TriangleMesh.create_arrow(cylinder_radius=0.02, cone_radius=0.03, cylinder_height=0.1, cone_height=0.08)
         cam.paint_uniform_color([0.2,0.7,1])
         cam.compute_vertex_normals()

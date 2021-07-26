@@ -371,12 +371,6 @@ def hand_landmarks_to_rect(hand):
     next_hand.rect_points = rotated_rect_to_points(next_hand.rect_x_center_a, next_hand.rect_y_center_a, next_hand.rect_w_a, next_hand.rect_h_a, next_hand.rotation)
     return next_hand
 
-
-
-
-
-    
-
 def warp_rect_img(rect_points, img, w, h):
         src = np.array(rect_points[1:], dtype=np.float32) # rect_points[0] is left bottom point !
         dst = np.array([(0, 0), (h, 0), (h, w)], dtype=np.float32)

@@ -1,6 +1,10 @@
 """
 This file is the template of the scripting node source code in edge mode
 Substitution is made in HandTrackerEdge.py
+
+In the following:
+rrn_ : normalized [0:1] coordinates in rotated rectangle coordinate systems 
+sqn_ : normalized [0:1] coordinates in squared input image
 """
 import marshal
 from math import sin, cos, atan2, pi, hypot, degrees, floor
@@ -9,7 +13,6 @@ ${_TRACE} ("Starting manager script node")
 
 
 def send_result(buf, type, lm_score=0, handedness=0, rect_center_x=0, rect_center_y=0, rect_size=0, rotation=0, rrn_lms=0, sqn_lms=0, xyz=0, xyz_zone=0):
-    global marshal
     # type : 0, 1 or 2
     #   0 : pose detection only (detection score < threshold)
     #   1 : pose detection + landmark regression
@@ -24,18 +27,14 @@ def send_result(buf, type, lm_score=0, handedness=0, rect_center_x=0, rect_cente
     node.io['host'].send(buf)
     ${_TRACE} ("Manager sent result to host")
 
-def rr2img(rrn_x, rrn_y, sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, sin_rot, cos_rot):
+def rr2img(rrn_x, rrn_y):
     # Convert a point (rrn_x, rrn_y) expressed in normalized rotated rectangle (rrn)
     # into (X, Y) expressed in normalized image (sqn)
-    # global rect_center_x, rect_center_y, rect_size, cos_rot, sin_rot
-    # cos_rot = cos(rotation)
-    # sin_rot = sin(rotation)
     X = sqn_rr_center_x + sqn_rr_size * ((rrn_x - 0.5) * cos_rot + (0.5 - rrn_y) * sin_rot)
     Y = sqn_rr_center_y + sqn_rr_size * ((rrn_y - 0.5) * cos_rot + (rrn_x - 0.5) * sin_rot)
     return X, Y
 
 def normalize_radians(angle):
-    global pi, floor
     return angle - 2 * pi * floor((angle + pi) / (2 * pi))
 
 # send_new_frame_to_branch defines on which branch new incoming frames are sent
@@ -66,7 +65,6 @@ while True:
         # Wait for pd post processing's result 
         detection = node.io['from_post_pd_nn'].get().getLayerFp16("result")
         ${_TRACE} ("Manager received pd result: "+str(detection))
-        # pd_score, sqn_rr_center_x, sqn_rr_center_y, sqn_scale_x, sqn_scale_y = detection
         pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection
         
         if pd_score < ${_pd_score_thresh}:
@@ -85,7 +83,6 @@ while True:
     # Tell pre_lm_manip how to crop body region 
     rr = RotatedRect()
     rr.center.x    = sqn_rr_center_x
-    # rr.center.y    = sqn_rr_center_y * ${_height_ratio} - ${_pad_h_norm}
     rr.center.y    = (sqn_rr_center_y * ${_frame_size} - ${_pad_h}) / ${_img_h}
     rr.size.width  = sqn_rr_size
     rr.size.height = sqn_rr_size * ${_frame_size} / ${_img_h}
@@ -102,8 +99,7 @@ while True:
     lm_score = lm_result.getLayerFp16("Identity_1")[0]
     if lm_score > ${_lm_score_thresh}:
         handedness = lm_result.getLayerFp16("Identity_2")[0]
-        # rrn_ : normalized [0:1] coordinates in rotated rectangle coordinate systems 
-        # sqn_ : normalized [0:1] coordinates in squared input image
+
         rrn_lms = lm_result.getLayerFp16("Identity_dense/BiasAdd/Add")
         # Retroproject landmarks into the original squared image 
         sqn_lms = []
@@ -113,9 +109,8 @@ while True:
             rrn_lms[3*i] /= lm_input_size
             rrn_lms[3*i+1] /= lm_input_size
             rrn_lms[3*i+2] /= lm_input_size  #* 0.4
-            sqn_x, sqn_y = rr2img(rrn_lms[3*i], rrn_lms[3*i+1], sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, sin_rot, cos_rot)
+            sqn_x, sqn_y = rr2img(rrn_lms[3*i], rrn_lms[3*i+1])
             sqn_lms += [sqn_x, sqn_y]
-
         xyz = 0
         xyz_zone = 0
         # Query xyz
@@ -125,7 +120,7 @@ while True:
         conf_data.depthThresholds.lowerThreshold = 100
         conf_data.depthThresholds.upperThreshold = 10000
         zone_size = max(int(sqn_rr_size * ${_frame_size} / 10), 8)
-        c_x = int(sqn_lms[0] * ${_frame_size} -zone_size/2)
+        c_x = int(sqn_lms[0] * ${_frame_size} -zone_size/2 + ${_crop_w})
         c_y = int(sqn_lms[1] * ${_frame_size} -zone_size/2 - ${_pad_h})
         rect_center = Point2f(c_x, c_y)
         rect_size = Size2f(zone_size, zone_size)

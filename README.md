@@ -16,13 +16,18 @@ on a ROI computed from the palm keypoints and supposed to contain the whole hand
 ## Host mode vs Edge mode
 Two modes are available:
 - **Host mode :** aside the neural networks that run on the device, almost all the processing is run on the host (the only processing done on the device is the letterboxing operation before the pose detection network when using the device camera as video source). **Use this mode when you want to infer on external input source (videos, images).**
-- **Edge mode :** most of the processing (neural networks, post-processings, image manipulations, ) is run on the device thaks to the depthai scripting node feature. It works only with the device camera but is **definitely the best option when working with the internal camera** (faster than in Host mode). The data exchanged between the host and the device is minimal: the landmarks of detected body (~2kB/frame), and optionally the device video frame. Edge mode only supports Solo mode.
+- **Edge mode :** most of the processing (neural networks, post-processings, image manipulations, ) is run on the device thanks to the depthai scripting node feature. It works only with the device camera but is **definitely the best option when working with the internal camera** (faster than in Host mode). The data exchanged between the host and the device is minimal: the landmarks of detected hand (~2kB/frame), and optionally the device video frame. Edge mode only supports Solo mode.
 
 ## Install
 
-Install DepthAI gen2 python package:
+**Currently, the scripting node capabilty is in the *develop* branch.**
 
-```python3 -m pip install -r requirements.txt```
+Inside a clone of https://github.com/luxonis/depthai-python :
+```
+git fetch --all
+git checkout origin/develop
+python3 ./examples/install_requirements.py
+```
 
 ## Run
 
@@ -47,7 +52,7 @@ Tracker arguments:
   --no_lm               Only the palm detection model is run (no hand landmark
                         model)
   --lm_model LM_MODEL   Path to a blob file for landmark model
-  -s, --solo            Detect one hand max
+  -s, --solo            Detect one hand max. Default in solo mode.
   -xyz, --xyz           Enable spatial location measure of palm centers
   -g, --gesture         Enable gesture recognition
   -c, --crop            Center crop frames to a square shape
@@ -151,9 +156,72 @@ The method used to build these models is well explained on the [rahulrav's blog]
 **Blob models vs tflite models**
 The palm detection blob does not exactly give the same results as the tflite version, because the tflite ResizeBilinear instruction is converted into IR Interpolate-1. Yet the difference is almost imperceptible thanks to the great help of PINTO (see [issue](https://github.com/PINTO0309/tflite2tensorflow/issues/4) ).
 
+## Code
+
+To facilitate reusability, the code is splitted in 2 classes:
+-  **HandTracker**, which is responsible of computing the hand landmarks. The importation of this class depends on the mode:
+```
+# For Host mode:
+from HandTracker import HandTracker
+```
+```
+# For Edge mode:
+from HandTrackerEdge import HandTracker
+```
+- **HandTrackerRenderer**, which is responsible of rendering the landmarks on the video frame. 
+
+This way, you can replace the renderer from this repository and write and personalize your own renderer (for some projects, you may not even need a renderer).
+
+The file ```demo.py``` is a representative example of how to use these classes:
+```
+from HandTrackerRenderer import HandTrackerRenderer
+from HandTracker import HandTracker
+
+# The argparse stuff has been removed to keep only the important code
+
+tracker = HandTracker(
+        input_src=args.input, 
+        use_lm= not args.no_lm, 
+        use_gesture=args.gesture,
+        xyz=args.xyz,
+        solo=args.solo,
+        crop=args.crop,
+        resolution=args.resolution,
+        stats=True,
+        trace=args.trace,
+        **tracker_args
+        )
+
+renderer = HandTrackerRenderer(
+        tracker=tracker,
+        output=args.output)
+
+while True:
+    # Run hand tracker on next frame
+    frame, hands = tracker.next_frame()
+    if frame is None: break
+    # Draw hands
+    frame = renderer.draw(frame, hands)
+    key = renderer.waitKey(delay=1)
+    if key == 27 or key == ord('q'):
+        break
+renderer.exit()
+tracker.exit()
+```
+
+`hands` returned by `tracker.next_frame()` is a list of HandRegion.
+
+For more information on:
+- the arguments of the tracker, please refer to the docstring of class `HandTracker` or `HandTrackerEdge` in `HandTracker.py` or `HandTrackerEdge.py`;
+- the attributes of an `HandRegion` element you can exploit in your program, please refer to the doctring of class `HandRegion` in `mediapipe_utils.py`.
 
 ## Examples
 
 |||
 |-|-|
-|[Pseudo-3D visualization with Open3d + smoothing filtering](examples/3d_visualization)  |<img src="examples/3d_visualization/medias/3d_visualization.gif" alt="3D visualization" width="200"/>|
+|[Pseudo-3D visualization with Open3d + smoothing filtering](examples/3d_visualization)  |[<img src="examples/3d_visualization/medias/3d_visualization.gif" alt="3D visualization" width="200"/>](examples/3d_visualization)|
+|[Remote control with hand poses](examples/remote_control) |[<img src="examples/remote_control/medias/toggle_light.gif" alt="3D visualization" width="200"/>](examples/remote_control)|
+
+## Credits
+* [Google Mediapipe](https://github.com/google/mediapipe)
+* Katsuya Hyodo a.k.a [Pinto](https://github.com/PINTO0309), the Wizard of Model Conversion !

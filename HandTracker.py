@@ -28,6 +28,7 @@ class HandTracker:
                     - a file path of an image or a video,
                     - an integer (eg 0) for a webcam id,
     - pd_model: palm detection model blob file (if None, takes the default value PALM_DETECTION_MODEL),
+    - pd_nms_thresh: NMS threshold,
     - pd_score: confidence score to determine whether a detection is reliable (a float between 0 and 1).
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
     - lm_model: landmark model blob file
@@ -40,7 +41,9 @@ class HandTracker:
     - internal_fps : when using the internal color camera as input source, set its FPS to this value (calling setFps()).
     - resolution : sensor resolution "full" (1920x1080) or "ultra" (3840x2160),
     - internal_frame_height : when using the internal color camera, set the frame height (calling setIspScale()).
-                            The width is calculated accordingly to height and depends on value of 'crop'
+                    The width is calculated accordingly to height and depends on value of 'crop'
+    - use_gesture : boolean, when True, recognize hand poses froma predefined set of poses
+                    (ONE, TWO, THREE, FOUR, FIVE, OK, PEACE, FIST)
     - stats : boolean, when True, display some statistics when exiting.   
     - trace: boolean, when True print some debug messages (only in Edge mode)   
     """

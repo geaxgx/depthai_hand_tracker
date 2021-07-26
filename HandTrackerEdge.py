@@ -33,6 +33,7 @@ class HandTracker:
                     In edge mode, only "rgb" and "rgb_laconic" are possible
     - pd_model: palm detection model blob file (if None, takes the default value PALM_DETECTION_MODEL),
     - pd_score: confidence score to determine whether a detection is reliable (a float between 0 and 1).
+    - pd_nms_thresh: NMS threshold.
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
     - lm_model: landmark model blob file
                     - None : the default blob file LANDMARK_MODEL,
@@ -47,6 +48,8 @@ class HandTracker:
     - resolution : sensor resolution "full" (1920x1080) or "ultra" (3840x2160),
     - internal_frame_height : when using the internal color camera, set the frame height (calling setIspScale()).
                     The width is calculated accordingly to height and depends on value of 'crop'
+    - use_gesture : boolean, when True, recognize hand poses froma predefined set of poses
+                    (ONE, TWO, THREE, FOUR, FIVE, OK, PEACE, FIST)
     - stats : boolean, when True, display some statistics when exiting.   
     - trace: boolean, when True print some debug messages (used only in Edge mode)   
     """
@@ -60,12 +63,13 @@ class HandTracker:
                 solo=True,
                 xyz=False,
                 crop=False,
-                internal_fps=40,
+                internal_fps=None,
                 resolution="full",
                 internal_frame_height=640,
+                use_gesture=False,
                 stats=False,
-                trace=False,
-                use_gesture=False):
+                trace=False
+                ):
 
         self.use_lm = use_lm
         if not use_lm:
@@ -84,7 +88,7 @@ class HandTracker:
         self.solo = True
         self.xyz = False
         self.crop = crop 
-        self.internal_fps = internal_fps     
+           
         self.stats = stats
         self.trace = trace
         self.use_gesture = use_gesture
@@ -96,8 +100,6 @@ class HandTracker:
             # Color camera frames are systematically transferred to the host
             self.input_type = "rgb" # OAK* internal color camera
             self.laconic = input_src == "rgb_laconic" # Camera frames are not sent to the host
-            self.internal_fps = internal_fps
-            print(f"Internal camera FPS set to: {self.internal_fps}")
             if resolution == "full":
                 self.resolution = (1920, 1080)
             elif resolution == "ultra":
@@ -114,6 +116,15 @@ class HandTracker:
                     self.xyz = True
                 else:
                     print("Warning: depth unavailable on this device, 'xyz' argument is ignored")
+
+            if internal_fps is None:
+                if self.xyz:
+                    self.internal_fps = 30
+                else:
+                    self.internal_fps = 39
+            else:
+                self.internal_fps = internal_fps 
+            print(f"Internal camera FPS set to: {self.internal_fps}") 
 
             self.video_fps = self.internal_fps # Used when saving the output in a video file. Should be close to the real fps
 
@@ -136,6 +147,7 @@ class HandTracker:
         else:
             print("Invalid input source:", input_src)
             sys.exit()
+        
         
 
         # Define and start pipeline
@@ -198,7 +210,7 @@ class HandTracker:
 
         # Define manager script node
         manager_script = pipeline.create(dai.node.Script)
-        manager_script.setScriptData(self.build_manager_script())
+        manager_script.setScript(self.build_manager_script())
 
         if self.xyz:
             print("Creating MonoCameras, Stereo and SpatialLocationCalculator nodes...")
@@ -223,6 +235,9 @@ class HandTracker:
             stereo.setLeftRightCheck(True)
             stereo.setDepthAlign(dai.CameraBoardSocket.RGB)
             stereo.setSubpixel(False)  # subpixel True -> latency
+            # MEDIAN_OFF necessary in depthai 2.7.2. 
+            # Otherwise : [critical] Fatal error. Please report to developers. Log: 'StereoSipp' '533'
+            # stereo.setMedianFilter(dai.StereoDepthProperties.MedianFilter.MEDIAN_OFF)
 
             spatial_location_calculator = pipeline.createSpatialLocationCalculator()
             spatial_location_calculator.setWaitForConfigInput(True)

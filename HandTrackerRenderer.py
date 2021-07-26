@@ -124,7 +124,7 @@ class HandTrackerRenderer:
             cv2.putText(self.frame, f"Z:{hand.xyz[2]/10:3.0f} cm", (x0+10, y0+70), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,255), 2)
         if self.show_xyz_zone:
             # Show zone on which the spatial data were calculated
-            cv2.rectangle(self.frame, hand.xyz_zone[0:2], hand.xyz_zone[2:4], (180,0,180), 2)
+            cv2.rectangle(self.frame, tuple(hand.xyz_zone[0:2]), tuple(hand.xyz_zone[2:4]), (180,0,180), 2)
 
 
     def draw(self, frame, hands):
