@@ -20,8 +20,7 @@ class HandRegion:
                 expressed in the source rectangular image when returned to the user
         lm_score: global landmark score
         norm_landmarks : 3D landmarks coordinates in the rotated bounding rectangle, normalized [0,1]
-        landmarks : model 3D landmarks coordinates in pixel in the source rectangular image
-                (here, 3D means virtual coordinates infered by the model)
+        landmarks : 2D landmarks coordinates in pixel in the source rectangular image
         handedness: float between 0. and 1., > 0.5 for right hand, < 0.5 for left hand,
         label: "left" or "right", handedness translated in a string,
         xyz: real 3D world coordinates of the wrist landmark, or of the palm center (if landmarks are not used),

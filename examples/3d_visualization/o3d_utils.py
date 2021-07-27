@@ -120,6 +120,7 @@ class Visu3D:
         # Defining callbacks - Key codes: https://www.glfw.org/docs/latest/group__keys.html
         self.vis.register_key_callback(ord("R"), self.start_rotating)
         self.vis.register_key_callback(ord("O"), self.start_oscillating)
+        self.vis.register_key_callback(ord("S"), self.stop_moving)
         self.vis.register_key_callback(262, self.turn_view_right) # Right arrow
         self.vis.register_key_callback(263, self.turn_view_left)  # Left arrow
         self.vis.register_key_callback(265, self.incr_rot_speed) # Up arrow
@@ -218,6 +219,9 @@ class Visu3D:
     def start_oscillating(self, vis):
         self.move = "oscillate"
         self.angle = 0
+    # Callback
+    def stop_moving(self, vis):
+        self.move = None
 
     def try_move(self):
         if self.move == "rotate":

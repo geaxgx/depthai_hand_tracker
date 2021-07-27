@@ -99,6 +99,7 @@ renderer3d = HandTracker3DRenderer(tracker, smoothing=not args.no_smoothing)
 renderer2d = HandTrackerRenderer(tracker)
 
 pause = False
+hands = []
 
 while True:
     # Run hand tracker on next frame
@@ -107,10 +108,10 @@ while True:
         if frame is None: break
         # Render 2d frame
         frame = renderer2d.draw(frame, hands)
-        key = renderer2d.waitKey(delay=1)
+        cv2.imshow("HandTracker", frame)
+    key = cv2.waitKey(1)
     # Draw hands on open3d canvas
-    frame = renderer3d.draw(hands)
-    
+    renderer3d.draw(hands)
     if key == 27 or key == ord('q'):
         break
     elif key == 32: # space
