@@ -23,7 +23,7 @@ Two modes are available:
 
 ![Distance person-camera = 5m](img/body_pre_focusing_5m.gif)
 
-The palm detector is trained to detect hands that are at a distance between 1 and 2 meters from the camera. So if the person stands further away, his hands may not be detected, especially when padding is used to make the image square. To improve the detection, a body pose estimator can help to focus on a zone of the image that contains only the hands. So instead of the whole image, we feed the palm detector with the cropped image of the zone around the hands.
+The palm detector is trained to detect hands that are less than 2 meters away from the camera. So if the person stands further away, his hands may not be detected, especially when padding is used to make the image square. To improve the detection, a body pose estimator can help to focus on a zone of the image that contains only the hands. So instead of the whole image, we feed the palm detector with the cropped image of the zone around the hands.
 
 A natural body pose estimator could be Blazepose as it is the model used in the Mediapipe Holistic solution, but here, we chose [Movenet Single pose](https://github.com/geaxgx/depthai_movenet/tree/main/examples/hand_focusing) because of its simpler architecture (Blazepose would imply a more complex pipeline with 2 more neural networks running on the MyriadX).
 
