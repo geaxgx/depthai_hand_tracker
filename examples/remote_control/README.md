@@ -168,6 +168,11 @@ Switching on/off an IP bulb (brand Yeelight) with the FIST or OK pose
 One color preset among 4 can be selected with ONE, TWO, THREE or FOUR pose
 The brightness can be changed by rotating an open hand (FIVE)
 
+For this example, the user can stand at a few meters from the camera. Therefore, it helps to enable the Body Pre Focusing mode with the following line in the config :
+```
+'tracker': {'args': {'body_pre_focusing': 'higher'}},
+```
+
 **Prerequisite:**
 ```
 pip install yeelight
@@ -178,6 +183,11 @@ pip install yeelight
 Play/pause a Sonos player with the FIST or OK pose
 Use the ONE pose to query song information (artist, title, album)
 The sound volume can be changed by rotating an open hand (FIVE)
+
+For this example, the user can stand at a few meters from the camera. Therefore, it helps to enable the Body Pre Focusing mode with the following line in the config :
+```
+'tracker': {'args': {'body_pre_focusing': 'higher'}},
+```
 
 **Prerequisite:**
 ```

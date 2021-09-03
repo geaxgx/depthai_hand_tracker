@@ -104,10 +104,10 @@ hands = []
 while True:
     # Run hand tracker on next frame
     if not pause:
-        frame, hands = tracker.next_frame()
+        frame, hands, bag = tracker.next_frame()
         if frame is None: break
         # Render 2d frame
-        frame = renderer2d.draw(frame, hands)
+        frame = renderer2d.draw(frame, hands, bag)
         cv2.imshow("HandTracker", frame)
     key = cv2.waitKey(1)
     # Draw hands on open3d canvas

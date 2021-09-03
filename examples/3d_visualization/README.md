@@ -53,6 +53,7 @@ Tracker arguments:
 |-|-|
 |o|Oscillating (rotating back and forth) of the view|
 |r|Continuous rotating of the view|
+|s|Stop oscillating or rotating|
 |*Up*|Increasing rotating or oscillating speed|
 |*Down*|Decreasing rotating or oscillating speed|
 |*Right* or *Left*|Change the point of view to a predefined position|

@@ -21,6 +21,10 @@ except ModuleNotFoundError:
     import sys
     sys.exit()
 bulbs = discover_bulbs()
+if bulbs == []:
+    print("No Yeelight bulb detected !")
+    import sys
+    sys.exit()
 bulb = Bulb(bulbs[0]['ip'])
 bulb_last_alert_time = 0
 
@@ -65,6 +69,9 @@ def change_brightness(event):
         bulb.set_brightness(max(0, brightness - 20))
 
 config = {
+
+    'tracker': {'args': {'body_pre_focusing': 'higher'}},
+
     'renderer' : {'enable': True, 'args':{'output':'toggle_light.mp4'}},
     
     'pose_actions' : [

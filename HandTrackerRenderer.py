@@ -7,6 +7,12 @@ LINES_HAND = [[0,1],[1,2],[2,3],[3,4],
             [9,13],[13,14],[14,15],[15,16],
             [13,17],[17,18],[18,19],[19,20],[0,17]]
 
+# LINES_BODY to draw the body skeleton when Body Pre Focusing is used
+LINES_BODY = [[4,2],[2,0],[0,1],[1,3],
+            [10,8],[8,6],[6,5],[5,7],[7,9],
+            [6,12],[12,11],[11,5],
+            [12,14],[14,16],[11,13],[13,15]]
+
 class HandTrackerRenderer:
     def __init__(self, 
                 tracker,
@@ -31,6 +37,8 @@ class HandTrackerRenderer:
 
         self.show_xyz_zone = self.show_xyz = self.tracker.xyz
         self.show_fps = True
+        self.show_body = False # self.tracker.body_pre_focusing is not None
+        self.show_inferences_status = False
 
         if output is None:
             self.output = None
@@ -41,28 +49,25 @@ class HandTrackerRenderer:
     def norm2abs(self, x_y):
         x = int(x_y[0] * self.tracker.frame_size - self.tracker.pad_w)
         y = int(x_y[1] * self.tracker.frame_size - self.tracker.pad_h)
-        return [x, y]
+        return (x, y)
 
     def draw_hand(self, hand):
 
         if self.tracker.use_lm:
             # (info_ref_x, info_ref_y): coords in the image of a reference point 
             # relatively to which hands information (score, handedness, xyz,...) are drawn
-            # info_ref_x = np.min(hand.landmarks[:,0])
-            # info_ref_y = np.max(hand.landmarks[:,1])
             info_ref_x = hand.landmarks[0,0]
             info_ref_y = np.max(hand.landmarks[:,1])
 
             # thick_coef is used to adapt the size of the draw landmarks features according to the size of the hand.
             thick_coef = hand.rect_w_a / 400
-
             if hand.lm_score > self.tracker.lm_score_thresh:
                 if self.show_rot_rect:
                     cv2.polylines(self.frame, [np.array(hand.rect_points)], True, (0,255,255), 2, cv2.LINE_AA)
                 if self.show_landmarks:
                     lines = [np.array([hand.landmarks[point] for point in line]).astype(np.int) for line in LINES_HAND]
-                    cv2.polylines(self.frame, lines, False, (255, 0, 0), int(2+thick_coef), cv2.LINE_AA)
-                    radius = int(2+thick_coef*4)
+                    cv2.polylines(self.frame, lines, False, (255, 0, 0), int(1+thick_coef*3), cv2.LINE_AA)
+                    radius = int(1+thick_coef*5)
                     if self.tracker.use_gesture:
                         # color depending on finger state (1=open, 0=close, -1=unknown)
                         color = { 1: (0,255,0), 0: (0,0,255), -1:(0,255,255)}
@@ -126,10 +131,40 @@ class HandTrackerRenderer:
             # Show zone on which the spatial data were calculated
             cv2.rectangle(self.frame, tuple(hand.xyz_zone[0:2]), tuple(hand.xyz_zone[2:4]), (180,0,180), 2)
 
+    def draw_body(self, body):
+        lines = [np.array([body.keypoints[point] for point in line]) for line in LINES_BODY if body.scores[line[0]] > self.tracker.body_score_thresh and body.scores[line[1]] > self.tracker.body_score_thresh]
+        cv2.polylines(self.frame, lines, False, (255, 144, 30), 2, cv2.LINE_AA)
 
-    def draw(self, frame, hands):
-        self.frame_source = frame.copy() # Used for snapshot when debugging
+    def draw_bag(self, bag):
+        
+        if self.show_inferences_status:
+            # Draw inferences status
+            h = self.frame.shape[0]
+            u = h // 10
+            status=""
+            if bag.get("bpf_inference", 0):
+                cv2.rectangle(self.frame, (u, 8*u), (2*u, 9*u), (255,144,30), -1)
+            if bag.get("pd_inference", 0):
+                cv2.rectangle(self.frame, (2*u, 8*u), (3*u, 9*u), (0,255,0), -1)
+            nb_lm_inferences = bag.get("lm_inference", 0)
+            if nb_lm_inferences:
+                cv2.rectangle(self.frame, (3*u, 8*u), ((3+nb_lm_inferences)*u, 9*u), (0,0,255), -1)
+
+        body = bag.get("body", False)
+        if body and self.show_body:
+            # Draw skeleton
+            self.draw_body(body)
+            # Draw Movenet smart cropping rectangle
+            cv2.rectangle(self.frame, (body.crop_region.xmin, body.crop_region.ymin), (body.crop_region.xmax, body.crop_region.ymax), (0,255,255), 2)
+            # Draw focus zone
+            focus_zone= bag.get("focus_zone", None)
+            if focus_zone:
+                cv2.rectangle(self.frame, focus_zone[0:2], focus_zone[2:4], (0,255,0),2)
+
+    def draw(self, frame, hands, bag={}):
         self.frame = frame
+        if bag:
+            self.draw_bag(bag)
         for hand in hands:
             self.draw_hand(hand)
         return self.frame
@@ -151,7 +186,6 @@ class HandTrackerRenderer:
             if key == ord('s'):
                 print("Snapshot saved in snapshot.jpg")
                 cv2.imwrite("snapshot.jpg", self.frame)
-                cv2.imwrite("snapshot_src.jpg", self.frame_source)
         elif key == ord('1'):
             self.show_pd_box = not self.show_pd_box
         elif key == ord('2'):
@@ -175,4 +209,9 @@ class HandTrackerRenderer:
                 self.show_xyz_zone = not self.show_xyz_zone 
         elif key == ord('f'):
             self.show_fps = not self.show_fps
+        elif key == ord('b'):
+            if self.tracker.body_pre_focusing:
+                self.show_body = not self.show_body 
+        elif key == ord('s'):
+            self.show_inferences_status = not self.show_inferences_status
         return key

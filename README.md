@@ -15,18 +15,51 @@ on a ROI computed from the palm keypoints and supposed to contain the whole hand
 
 ## Host mode vs Edge mode
 Two modes are available:
-- **Host mode :** aside the neural networks that run on the device, almost all the processing is run on the host (the only processing done on the device is the letterboxing operation before the pose detection network when using the device camera as video source). **Use this mode when you want to infer on external input source (videos, images).**
-- **Edge mode :** most of the processing (neural networks, post-processings, image manipulations, ) is run on the device thanks to the depthai scripting node feature. It works only with the device camera but is **definitely the best option when working with the internal camera** (faster than in Host mode). The data exchanged between the host and the device is minimal: the landmarks of detected hand (~2kB/frame), and optionally the device video frame. Edge mode only supports Solo mode.
+- **Host mode :** aside the neural networks that run on the device, almost all the processing apart from nerual networks is run on the host (the only processing done on the device is the letterboxing operation before the pose detection network when using the device camera as video source). **Use this mode when you want to detect all the hands in the image or when the image comes from an external input source (video file, image file, host webcam).**
+- **Edge mode :** most of the processing (neural networks, post-processings, image manipulations, ) is run on the device thanks to the depthai scripting node feature. It works only with the device camera but is **definitely the best option when working with the internal camera in Solo mode** (significantly faster than in Host mode). The data exchanged between the host and the device is minimal: landmarks of the detected hand (<1.5kB/frame), and optionally the device video frame. Edge mode only supports Solo mode.
+
+## Body Pre Focusing 
+**Body Pre Focusing is an optional mechanism meant to help the hand detection when the person is far from the camera.**
+
+![Distance person-camera = 5m](img/body_pre_focusing_5m.gif)
+
+The palm detector is trained to detect hands that are at a distance between 1 and 2 meters from the camera. So if the person stands further away, his hands may not be detected, especially when padding is used to make the image square. To improve the detection, a body pose estimator can help to focus on a zone of the image that contains only the hands. So instead of the whole image, we feed the palm detector with the cropped image of the zone around the hands.
+
+A natural body pose estimator could be Blazepose as it is the model used in the Mediapipe Holistic solution, but here, we chose [Movenet Single pose](https://github.com/geaxgx/depthai_movenet/tree/main/examples/hand_focusing) because of its simpler architecture (Blazepose would imply a more complex pipeline with 2 more neural networks running on the MyriadX).
+
+Movenet gives the wrist keypoints, which are used as the center of the zones we are looking for. Several options are available, selected by the **body_pre_focusing** parameter (illustrated in the table below). 
+
+By setting the **hands_up_only** option, we ask to take into consideration only the hands for which the wrist keypoint is above the elbow keypoint, meaning in practice that the hands are raised. Indeed, when we want to recognize hand gestures, the arm is generally folded and the hand up.
+
+*In the video above, the person is at 5m from the camera. The big yellow square represents the smart cropping zone of Movenet. The small green square represents the focus zone on which the palm detector is run. In this example, hands_up_only=True, so this green square appears only when the hand is raised. Once a hand is detected, only the landmark model runs, as long as it can track the hand (the small yellow rotated square is drawn around the hand)*
+
+**Recommendations:**
+* Use Body Pre Focusing when the person can be at more than 1.5 meter from the camera. When you know that the person always stays at a closer distance, palm detection on the whole image works well enough and Body Pre Focusing would just add an unnecessary overload in the processing. However, note that in Solo mode, once a hand has been successfully detected, the body pose network, like the palm detection network, stays inactive on the following frames, as long as the hand landmark regressor can keep track of the hand.
+* In the typical use case of gesture recognition, the person raises his hand to make the pose. You probably want to set **hands_up_only** to True, as it is a convenient way to avoid false positive recognition when the hand is not raised. In addition, in Solo mode, **body_pre_focusing=higher** allows to focus on the hand that is higher. Still in Solo mode, another benefit of Body Pre Focusing is that most of the time (see remark below), handedness can be determined directly from the body keypoint, which is much more reliable than the handedness inferred by the landmark model, especially when the body is far from the camera.
+* When the person is far, **good image definition and ambient lighting have a big impact on the quality of the detection**. Using a higher resolution (`--resolution ultra`) may help.
+
+**Remarks:**
+* There is a small chance that the handedness is incorrect if the focus zone given by the Body Pre Focusing algorithm contains several hands, which happens when hands are close to each other. In that case, the hand with the higher score is selected.
+* When **hands_up_only** is used, it means that on the first frame where the hand is detected, the hand is raised. Then, on the following frames, the hand is tracked by the landmark model, and since its position relative to the elbow is not checked anymore, the hand can be lowered without interrupting the tracking.  
+
+|Arguments|Palm detection input |Hand tracker output|Remarks|
+|:-:|:-:|:-:|-|
+|*No BPF*|<img src="img/pd_input_no_bpf.jpg" alt="PD input: no BPF" width="128"/>|[<img src="img/output_no_bpf.jpg" alt="Output: no BPF" width="350"/>](img/output_no_bpf.jpg)|Because of the padding, hands get very small and palm detection gives a poor result (right hand not detected, left hand detection inaccurate)|
+|*No BPF*<br>crop=True|<img src="img/pd_input_no_bpf_crop.jpg" alt="PD input: no BPF, crop" width="128"/>|[<img src="img/output_no_bpf_crop.jpg" alt="Output: no BPF, crop" width="200"/>](img/output_no_bpf_crop.jpg)|Cropping the image along the shortest side is an easy and inexpensive way to improve the detection, but at the condition the person stays in the center of the image|
+|body_pre_focusing=group<br>hands_up_only=False|<img src="img/pd_input_bpf_group_all_hands.jpg" alt="PD input: bpf=group, all hands" width="128"/>|[<img src="img/output_bpf_group_all_hands.jpg" alt="Output: bpf=group, all hands" width="350"/>](img/output_bpf_group_all_hands.jpg)|BPF algorithm finds a zone that contains both hands, which are correctly detected|
+|body_pre_focusing=group<br>hands_up_only=True|<img src="img/pd_input_bpf_right.jpg" alt="PD input: bpf=group, hands up only" width="128"/>|[<img src="img/output_bpf_group.jpg" alt="Output: bpf=group, all hands" width="350"/>](img/output_bpf_group.jpg)|With "hands_up_only" set to True, the left hand is not taken into consideration since the wrist keypoint is below the elbow keypoint|
+|body_pre_focusing=right|<img src="img/pd_input_bpf_right.jpg" alt="PD input: bpf=right" width="128"/>|[<img src="img/output_bpf_group.jpg" alt="Output: bpf=right" width="350"/>](img/output_bpf_group.jpg)|The right hand is correctly detected, whatever the value of "hands_up_only"|
+|body_pre_focusing=left<br>hands_up_only=False|<img src="img/pd_input_bpf_left_all_hands.jpg" alt="PD input: bpf=left, all hands" width="128"/>|[<img src="img/output_bpf_left_all_hands.jpg" alt="Output:  bpf=left, all hands" width="350"/>](img/output_bpf_left_all_hands.jpg)|The left hand is correctly detected|
+|body_pre_focusing=left<br>hands_up_only=true|<img src="img/pd_input_no_bpf.jpg" alt="PD input: bpf=left, hands up only" width="128"/>|[<img src="img/output_bpf_left.jpg" alt="Output: bpf=left, hands up only" width="350"/>](img/output_bpf_left.jpg)|Because the left hand is not raised, it is not taken into consideration, so we fall back to the case where BPF is not used|
+|body_pre_focusing=higher|<img src="img/pd_input_bpf_right.jpg" alt="PD input: bpf=higher" width="128"/>|[<img src="img/output_bpf_higher.jpg" alt="Output: bpf=higher" width="350"/>](img/output_bpf_higher.jpg)|Here, same result as for "body_pre_focusing=right",  whatever the value of "hands_up_only"|
+
 
 ## Install
 
-**Currently, the scripting node capabilty is in the *develop* branch.**
+Install the python packages (depthai, opencv, open3d) with the following command:
 
-Inside a clone of https://github.com/luxonis/depthai-python :
 ```
-git fetch --all
-git checkout origin/develop
-python3 ./examples/install_requirements.py
+python3 -m pip install -r requirements.txt
 ```
 
 ## Run
@@ -37,8 +70,8 @@ python3 ./examples/install_requirements.py
 usage: demo.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
                [--lm_model LM_MODEL] [-s] [-xyz] [-g] [-c] [-f INTERNAL_FPS]
                [-r {full,ultra}]
-               [--internal_frame_height INTERNAL_FRAME_HEIGHT] [-t]
-               [-o OUTPUT]
+               [--internal_frame_height INTERNAL_FRAME_HEIGHT]
+               [-bpf {right,left,group,higher}] [-ah] [-t] [-o OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -64,6 +97,10 @@ Tracker arguments:
                         (3840x2160) (default=full)
   --internal_frame_height INTERNAL_FRAME_HEIGHT
                         Internal color camera frame height in pixels
+  -bpf {right,left,group,higher}, --body_pre_focusing {right,left,group,higher}
+                        Enable Body Pre Focusing
+  -ah, --all_hands      In Body Pre Focusing mode, consider all hands (not
+                        only the hands up)
   -t, --trace           Print some debug messages
 
 Renderer arguments:
@@ -71,29 +108,45 @@ Renderer arguments:
                         Path to output video file
 ```
 
-- To use the color camera as input :
+- To use the color camera as input in Host mode:
 
     ```./demo.py```
 
-- To use a file (video or image) as input :
+- To use the color camera as input in Edge mode (recommended for Solo mode):
+
+    ```./demo.py -e```
+
+- To use the color camera as input in Edge mode when you don't need to retrieve the video frame (only the landmark information is transfered to the host):
+
+    ```./demo.py -e -i rgb_laconic```
+
+- To use a file (video or image) as input (Host mode only):
 
     ```./demo.py -i filename```
 
-- To enable gesture recognition :
+- To enable gesture recognition:
 
-    ```./demo.py -g```
+    ```./demo.py [-e] -g```
 
 ![Gesture recognition](img/gestures.gif)
 
+- Recommended options for gesture recognition when the person can move a few meters from the camera:
+
+    ```./demo.py -e -g -bpf higher```
+
+    or
+
+    ```./demo.py -e -g -bpf higher --resolution ultra```   (a bit slower but better image definition)
+
 - To measure hand spatial location in camera coordinate system (only for depth-capable device like OAK-D):
 
-    ```./demo.py -xyz```
+    ```./demo.py [-e] -xyz```
 
     ![Hands spatial location](img/hands_xyz.png)
 
     The measure is made on the wrist keypoint (or on the palm box center if '--no_lm' is used).
 
-- To run only the palm detection model (without hand landmarks):
+- To run only the palm detection model (without hand landmarks, Host mode only):
 
     ```./demo.py --no_lm```
 
@@ -116,6 +169,7 @@ Renderer arguments:
 |8|Show/hide hand spatial location (-xyz)|
 |9|Show/hide the zone used to measure the spatial location (-xyz)|
 |f|Show/hide FPS|
+|b|Show/hide body keypoints, smart cropping zone and focus zone if body pre focusing is used (only in Host mode)|
 
 
 ## Mediapipe models 
@@ -146,6 +200,9 @@ By default, the number of SHAVES associated with the blob files is 4. In case yo
 **Explanation about the Model Optimizer params :**
 - The preview of the OAK-* color camera outputs BGR [0, 255] frames . The original tflite palm detection model is expecting RGB [-1, 1] frames. ```--reverse_input_channels``` converts BGR to RGB. ```--mean_values [127.5,127.5,127.5] --scale_values [127.5,127.5,127.5]``` normalizes the frames between [-1, 1].
 - The images which are fed to hand landmark model are built on the host in a format similar to the OAK-* cameras (BGR [0, 255]). The original hand landmark model is expecting RGB [0, 1] frames. Therefore, the following arguments are used ```--reverse_input_channels --scale_values [255.0, 255.0, 255.0]```
+
+**Movenet models :**
+The 'lightning' and 'thunder' Movenet models come from the repository [geaxgx/depthai_movenet](https://github.com/geaxgx/depthai_movenet/tree/main/models).
 
 ## Custom model
 

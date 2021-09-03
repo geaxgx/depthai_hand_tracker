@@ -54,6 +54,9 @@ def change_volume(event):
         sonos.volume = max(0, volume - 1)
 
 config = {
+
+    'tracker': {'args': {'body_pre_focusing': 'higher'}},
+
     'renderer' : {'enable': True},
     
     'pose_actions' : [

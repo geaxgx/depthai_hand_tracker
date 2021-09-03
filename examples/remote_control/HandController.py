@@ -263,14 +263,14 @@ class HandController:
     def loop(self):
         while True:
             self.now = monotonic()
-            frame, hands = self.tracker.next_frame()
+            frame, hands, bag = self.tracker.next_frame()
             if frame is None: break
             self.frame_nb += 1
             events = self.generate_events(hands)
             self.process_events(events)
 
             if self.use_renderer:
-                frame = self.renderer.draw(frame, hands)
+                frame = self.renderer.draw(frame, hands, bag)
                 key = self.renderer.waitKey(delay=1)
                 if key == 27 or key == ord('q'):
                     break
