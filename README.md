@@ -62,6 +62,8 @@ Install the python packages (depthai, opencv, open3d) with the following command
 python3 -m pip install -r requirements.txt
 ```
 
+*Note that the version of depthai specified in requirements.txt contains a fix necessary to use Body Pre Focusing (-bpf) and Spatial Location (-xyz) together.*
+
 ## Run
 
 **Usage:**
