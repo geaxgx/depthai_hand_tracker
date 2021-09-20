@@ -29,7 +29,11 @@ parser_tracker.add_argument('-f', '--internal_fps', type=int,
 parser_tracker.add_argument("-r", "--resolution", choices=['full', 'ultra'], default='full',
                     help="Sensor resolution: 'full' (1920x1080) or 'ultra' (3840x2160) (default=%(default)s)")
 parser_tracker.add_argument('--internal_frame_height', type=int,                                                                                 
-                    help="Internal color camera frame height in pixels")                               
+                    help="Internal color camera frame height in pixels") 
+parser_tracker.add_argument("-bpf", "--body_pre_focusing", choices=['right', 'left', 'group', 'higher'],
+                    help="Enable Body Pre Focusing")      
+parser_tracker.add_argument('-ah', '--all_hands', action="store_true", 
+                    help="In Body Pre Focusing mode, consider all hands (not only the hands up)")                                     
 parser_tracker.add_argument('-t', '--trace', action="store_true", 
                     help="Print some debug messages")                
 parser_renderer = parser.add_argument_group("Renderer arguments")
@@ -38,14 +42,14 @@ parser_renderer.add_argument('-o', '--output',
 args = parser.parse_args()
 
 if args.edge:
-    from HandTrackerEdge import HandTracker
+    from HandTrackerBpfEdge import HandTrackerBpf
 else:
-    from HandTracker import HandTracker
+    from HandTrackerBpf import HandTrackerBpf
 
 dargs = vars(args)
 tracker_args = {a:dargs[a] for a in ['pd_model', 'lm_model', 'internal_fps', 'internal_frame_height'] if dargs[a] is not None}
 
-tracker = HandTracker(
+tracker = HandTrackerBpf(
         input_src=args.input, 
         use_lm= not args.no_lm, 
         use_gesture=args.gesture,
@@ -53,6 +57,8 @@ tracker = HandTracker(
         solo=args.solo,
         crop=args.crop,
         resolution=args.resolution,
+        body_pre_focusing=args.body_pre_focusing,
+        hands_up_only=not args.all_hands,
         stats=True,
         trace=args.trace,
         **tracker_args
@@ -65,6 +71,7 @@ renderer = HandTrackerRenderer(
 while True:
     # Run hand tracker on next frame
     # 'bag' is information common to the frame and to the hands 
+    # (like body keypoints in Body Pre Focusing mode)
     frame, hands, bag = tracker.next_frame()
     if frame is None: break
     # Draw hands

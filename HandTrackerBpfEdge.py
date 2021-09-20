@@ -15,7 +15,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
 LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
 DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/DetectionBestCandidate_sh1.blob")
-DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/PDPostProcessing_top2_sh1.blob")
+MOVENET_LIGHTNING_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_lightning_U8_transpose.blob")
+MOVENET_THUNDER_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_thunder_U8_transpose.blob")
 TEMPLATE_MANAGER_SCRIPT = str(SCRIPT_DIR / "template_manager_script.py")
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
@@ -23,7 +24,7 @@ def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
 
 
 
-class HandTracker:
+class HandTrackerBpf:
     """
     Mediapipe Hand Tracker for depthai
     Arguments:
@@ -52,6 +53,14 @@ class HandTracker:
                     The width is calculated accordingly to height and depends on value of 'crop'
     - use_gesture : boolean, when True, recognize hand poses froma predefined set of poses
                     (ONE, TWO, THREE, FOUR, FIVE, OK, PEACE, FIST)
+    - body_pre_focusing: None or "right" or "left" or "group" or "higher". Body pre focusing is the use
+                    of a body pose detector to help to focus on the region of the image that
+                    contains one hand ("left" or "right") or "both" hands. 
+                    None = don't use body pre focusing.
+    - body_model : Movenet single pose model: "lightning", "thunder"
+    - body_score_thresh : Movenet score thresh
+    - hands_up_only: boolean. When using body_pre_focusing, if hands_up_only is True, consider only hands for which the wrist keypoint
+                    is above the elbow keypoint.
     - stats : boolean, when True, display some statistics when exiting.   
     - trace: boolean, when True print some debug messages or show output of ImageManip nodes
                     (used only in Edge mode)   
@@ -70,6 +79,10 @@ class HandTracker:
                 resolution="full",
                 internal_frame_height=640,
                 use_gesture=False,
+                body_pre_focusing = None,
+                body_model = "thunder",
+                body_score_thresh=0.2,
+                hands_up_only=True,
                 stats=False,
                 trace=False
                 ):
@@ -82,6 +95,17 @@ class HandTracker:
         print(f"Palm detection blob : {self.pd_model}")
         self.lm_model = lm_model if lm_model else LANDMARK_MODEL
         print(f"Landmark blob       : {self.lm_model}")
+        self.body_pre_focusing = body_pre_focusing 
+        self.body_score_thresh = body_score_thresh
+        self.body_input_length = 256
+        self.hands_up_only = hands_up_only
+        if self.body_pre_focusing:
+            if body_model == "lightning":
+                self.body_model = MOVENET_LIGHTNING_MODEL
+                self.body_input_length = 192 
+            else:
+                self.body_model = MOVENET_THUNDER_MODEL            
+            print(f"Body pose blob      : {self.body_model}")
         self.pd_score_thresh = pd_score_thresh
         self.pd_nms_thresh = pd_nms_thresh
         self.lm_score_thresh = lm_score_thresh
@@ -151,6 +175,11 @@ class HandTracker:
             print("Invalid input source:", input_src)
             sys.exit()
         
+        if self.body_pre_focusing:
+            # Defines the default crop region (pads the full image from both sides to make it a square image) 
+            # Used when the algorithm cannot reliably determine the crop region from the previous frame.
+            self.crop_region = mpu.CropRegion(-self.pad_w, -self.pad_h,-self.pad_w+self.frame_size, -self.pad_h+self.frame_size, self.frame_size)
+
         # Define and start pipeline
         usb_speed = self.device.getUsbSpeed()
         self.device.startPipeline(self.create_pipeline())
@@ -162,6 +191,8 @@ class HandTracker:
         self.q_manager_out = self.device.getOutputQueue(name="manager_out", maxSize=1, blocking=False)
         # For showing outputs of ImageManip nodes (debugging)
         if self.trace:
+            if self.body_pre_focusing:
+                self.q_pre_body_manip_out = self.device.getOutputQueue(name="pre_body_manip_out", maxSize=1, blocking=False)
             self.q_pre_pd_manip_out = self.device.getOutputQueue(name="pre_pd_manip_out", maxSize=1, blocking=False)
             self.q_pre_lm_manip_out = self.device.getOutputQueue(name="pre_lm_manip_out", maxSize=1, blocking=False)    
 
@@ -253,6 +284,31 @@ class HandTracker:
 
             manager_script.outputs['spatial_location_config'].link(spatial_location_calculator.inputConfig)
             spatial_location_calculator.out.link(manager_script.inputs['spatial_data'])
+            
+        if self.body_pre_focusing:
+            # Define body pose detection pre processing: resize preview to (self.body_input_length, self.body_input_length)
+            # and transform BGR to RGB
+            print("Creating Body Pose Detection pre processing image manip...")
+            pre_body_manip = pipeline.create(dai.node.ImageManip)
+            pre_body_manip.setMaxOutputFrameSize(self.body_input_length*self.body_input_length*3)
+            pre_body_manip.setWaitForConfigInput(True)
+            pre_body_manip.inputImage.setQueueSize(1)
+            pre_body_manip.inputImage.setBlocking(False)
+            cam.preview.link(pre_body_manip.inputImage)
+            manager_script.outputs['pre_body_manip_cfg'].link(pre_body_manip.inputConfig)
+            # For debugging
+            if self.trace:
+                pre_body_manip_out = pipeline.createXLinkOut()
+                pre_body_manip_out.setStreamName("pre_body_manip_out")
+                pre_body_manip.out.link(pre_body_manip_out.input)
+
+            # Define landmark model
+            print("Creating Body Pose Detection Neural Network...")          
+            body_nn = pipeline.create(dai.node.NeuralNetwork)
+            body_nn.setBlobPath(self.body_model)
+            # lm_nn.setNumInferenceThreads(1)
+            pre_body_manip.out.link(body_nn.input)
+            body_nn.out.link(manager_script.inputs['from_body_nn'])
 
         # Define palm detection pre processing: resize preview to (self.pd_input_length, self.pd_input_length)
         print("Creating Palm Detection pre processing image manip...")
@@ -341,7 +397,13 @@ class HandTracker:
                     _frame_size = self.frame_size,
                     _crop_w = self.crop_w,
                     _IF_XYZ = "" if self.xyz else '"""',
-                    _buffer_size = 1185 if self.xyz else 1138
+                    _buffer_size = 1185 if self.xyz else 1138,
+                    _IF_BPF = "" if self.body_pre_focusing else '"""',
+                    _body_pre_focusing = self.body_pre_focusing,
+                    _body_score_thresh = self.body_score_thresh,
+                    _body_input_length = self.body_input_length,
+                    _first_branch = 0 if self.body_pre_focusing else 1,
+                    _hands_up_only = self.hands_up_only
         )
         # Remove comments and empty lines
         import re
@@ -431,6 +493,11 @@ class HandTracker:
 
         # For debugging
         if self.trace:
+            if self.body_pre_focusing:
+                pre_body_manip = self.q_pre_body_manip_out.tryGet()
+                if pre_body_manip:
+                    pre_pd_manip = pre_body_manip.getCvFrame()
+                    cv2.imshow("pre_body_manip", pre_pd_manip)
             pre_pd_manip = self.q_pre_pd_manip_out.tryGet()
             if pre_pd_manip:
                 pre_pd_manip = pre_pd_manip.getCvFrame()
@@ -453,7 +520,7 @@ class HandTracker:
             hand.lm_score = res["lm_score"]
             hand.handedness = res["handedness"]
             hand.label = "right" if hand.handedness > 0.5 else "left"
-            # hand.norm_landmarks contains the normalized ([0:1]) 3D coordinates of landmarks in the square rotated bounding box
+            # hand.norm_landmarks contains the normalized ([0:1]) 3D coordinates of landmarks in the square rotated body bounding box
             hand.norm_landmarks = np.array(res['rrn_lms']).reshape(-1,3)
             # hand.landmarks = the landmarks in the image coordinate system (in pixel)
             hand.landmarks = (np.array(res["sqn_lms"]) * self.frame_size).reshape(-1,2).astype(np.int)
