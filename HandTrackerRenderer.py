@@ -159,7 +159,7 @@ class HandTrackerRenderer:
             # Draw focus zone
             focus_zone= bag.get("focus_zone", None)
             if focus_zone:
-                cv2.rectangle(self.frame, focus_zone[0:2], focus_zone[2:4], (0,255,0),2)
+                cv2.rectangle(self.frame, tuple(focus_zone[0:2]), tuple(focus_zone[2:4]), (0,255,0),2)
 
     def draw(self, frame, hands, bag={}):
         self.frame = frame
