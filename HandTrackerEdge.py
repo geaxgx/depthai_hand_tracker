@@ -1,5 +1,7 @@
 import numpy as np
 from collections import namedtuple
+
+from numpy.lib.arraysetops import isin
 import mediapipe_utils as mpu
 import depthai as dai
 import cv2
@@ -14,13 +16,12 @@ import marshal
 SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
 LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
-DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/DetectionBestCandidate_sh1.blob")
 DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/PDPostProcessing_top2_sh1.blob")
-TEMPLATE_MANAGER_SCRIPT = str(SCRIPT_DIR / "template_manager_script.py")
+TEMPLATE_MANAGER_SCRIPT = str(SCRIPT_DIR / "template_manager_script_duo_hand.py")
+TEMPLATE_MANAGER_SCRIPT_SINGLE = str(SCRIPT_DIR / "template_manager_script_single_hand.py")
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return cv2.resize(arr, shape).transpose(2,0,1).flatten()
-
 
 
 class HandTracker:
@@ -63,7 +64,7 @@ class HandTracker:
                 lm_model=None,
                 lm_score_thresh=0.5,
                 pp_model = DETECTION_POSTPROCESSING_MODEL,
-                solo=True,
+                solo=False,
                 xyz=False,
                 crop=False,
                 internal_fps=None,
@@ -88,7 +89,7 @@ class HandTracker:
         self.pp_model = pp_model
         if not solo:
             print("Warning: non solo mode is not implemented in edge mode. Continuing in solo mode.")
-        self.solo = True
+        self.solo = solo
         self.xyz = False
         self.crop = crop 
            
@@ -296,7 +297,7 @@ class HandTracker:
         pre_lm_manip = pipeline.create(dai.node.ImageManip)
         pre_lm_manip.setMaxOutputFrameSize(self.lm_input_length*self.lm_input_length*3)
         pre_lm_manip.setWaitForConfigInput(True)
-        pre_lm_manip.inputImage.setQueueSize(1)
+        pre_lm_manip.inputImage.setQueueSize(2)
         pre_lm_manip.inputImage.setBlocking(False)
         cam.preview.link(pre_lm_manip.inputImage)
 
@@ -312,7 +313,7 @@ class HandTracker:
         print("Creating Hand Landmark Neural Network...")          
         lm_nn = pipeline.create(dai.node.NeuralNetwork)
         lm_nn.setBlobPath(self.lm_model)
-        # lm_nn.setNumInferenceThreads(1)
+        lm_nn.setNumInferenceThreads(2)
         pre_lm_manip.out.link(lm_nn.input)
         lm_nn.out.link(manager_script.inputs['from_lm_nn'])
             
@@ -327,8 +328,12 @@ class HandTracker:
         So we build this code from the content of the file template_manager_script.py which is a python template
         '''
         # Read the template
-        with open(TEMPLATE_MANAGER_SCRIPT, 'r') as file:
-            template = Template(file.read())
+        if self.solo:
+            with open(TEMPLATE_MANAGER_SCRIPT_SINGLE, 'r') as file:
+                template = Template(file.read())
+        else:
+            with open(TEMPLATE_MANAGER_SCRIPT, 'r') as file:
+                template = Template(file.read())
         
         # Perform the substitution
         code = template.substitute(
@@ -417,7 +422,62 @@ class HandTracker:
             r.gesture = "FOUR"
         else:
             r.gesture = None
-            
+
+    def extract_multi_hand_data(self, res, hand_count):
+        hand = mpu.HandRegion()
+        hand.rect_x_center_a = res["rect_center_x"][hand_count] * self.frame_size
+        hand.rect_y_center_a = res["rect_center_y"][hand_count] * self.frame_size
+        hand.rect_w_a = hand.rect_h_a = res["rect_size"][hand_count] * self.frame_size
+        hand.rotation = res["rotation"][hand_count] 
+        hand.rect_points = mpu.rotated_rect_to_points(hand.rect_x_center_a, hand.rect_y_center_a, hand.rect_w_a, hand.rect_h_a, hand.rotation)
+        hand.lm_score = res["lm_score"][hand_count]
+        hand.handedness = res["handedness"][hand_count]
+        hand.label = "right" if hand.handedness > 0.5 else "left"
+        hand.norm_landmarks = np.array(res['rrn_lms'][hand_count]).reshape(-1,3)
+        hand.landmarks = (np.array(res["sqn_lms"][hand_count]) * self.frame_size).reshape(-1,2).astype(np.int)
+        if self.xyz:
+            hand.xyz = res["xyz"][hand_count]
+            hand.xyz_zone = res["xyz_zone"][hand_count]
+        # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
+        if self.pad_h > 0:
+            hand.landmarks[:,1] -= self.pad_h
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][1] -= self.pad_h
+        if self.pad_w > 0:
+            hand.landmarks[:,0] -= self.pad_w
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][0] -= self.pad_w
+        if self.use_gesture: self.recognize_gesture(hand)
+
+        return hand
+
+    def extract_single_hand_data(self, res):
+        hand = mpu.HandRegion()
+        hand.rect_x_center_a = res["rect_center_x"] * self.frame_size
+        hand.rect_y_center_a = res["rect_center_y"] * self.frame_size
+        hand.rect_w_a = hand.rect_h_a = res["rect_size"] * self.frame_size
+        hand.rotation = res["rotation"]
+        hand.rect_points = mpu.rotated_rect_to_points(hand.rect_x_center_a, hand.rect_y_center_a, hand.rect_w_a, hand.rect_h_a, hand.rotation)
+        hand.lm_score = res["lm_score"]
+        hand.handedness = res["handedness"]
+        hand.label = "right" if hand.handedness > 0.5 else "left"
+        hand.norm_landmarks = np.array(res['rrn_lms']).reshape(-1,3)
+        hand.landmarks = (np.array(res["sqn_lms"]) * self.frame_size).reshape(-1,2).astype(np.int)
+        if self.xyz:
+            hand.xyz = res["xyz"]
+            hand.xyz_zone = res["xyz_zone"]
+        # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
+        if self.pad_h > 0:
+            hand.landmarks[:,1] -= self.pad_h
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][1] -= self.pad_h
+        if self.pad_w > 0:
+            hand.landmarks[:,0] -= self.pad_w
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][0] -= self.pad_w
+        if self.use_gesture: self.recognize_gesture(hand)
+
+        return hand
 
     def next_frame(self):
 
@@ -442,39 +502,18 @@ class HandTracker:
 
         # Get result from device
         res = marshal.loads(self.q_manager_out.get().getData())
-
-        if res["type"] != 0 and res["lm_score"] > self.lm_score_thresh:
-            hand = mpu.HandRegion()
-            hand.rect_x_center_a = res["rect_center_x"] * self.frame_size
-            hand.rect_y_center_a = res["rect_center_y"] * self.frame_size
-            hand.rect_w_a = hand.rect_h_a = res["rect_size"] * self.frame_size
-            hand.rotation = res["rotation"] 
-            hand.rect_points = mpu.rotated_rect_to_points(hand.rect_x_center_a, hand.rect_y_center_a, hand.rect_w_a, hand.rect_h_a, hand.rotation)
-            hand.lm_score = res["lm_score"]
-            hand.handedness = res["handedness"]
-            hand.label = "right" if hand.handedness > 0.5 else "left"
-            # hand.norm_landmarks contains the normalized ([0:1]) 3D coordinates of landmarks in the square rotated bounding box
-            hand.norm_landmarks = np.array(res['rrn_lms']).reshape(-1,3)
-            # hand.landmarks = the landmarks in the image coordinate system (in pixel)
-            hand.landmarks = (np.array(res["sqn_lms"]) * self.frame_size).reshape(-1,2).astype(np.int)
-            if self.xyz:
-                hand.xyz = res["xyz"]
-                hand.xyz_zone = res["xyz_zone"]
-            # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
-            if self.pad_h > 0:
-                hand.landmarks[:,1] -= self.pad_h
-                for i in range(len(hand.rect_points)):
-                    hand.rect_points[i][1] -= self.pad_h
-            if self.pad_w > 0:
-                hand.landmarks[:,0] -= self.pad_w
-                for i in range(len(hand.rect_points)):
-                    hand.rect_points[i][0] -= self.pad_w
-            if self.use_gesture: self.recognize_gesture(hand)
-            hands = [hand]
-
-        else:
-            hands = []
-        
+        hands = []
+        if res["type"] != 0:
+            if not self.solo:
+                for i in range(len(res["lm_score"])):
+                    hand = self.extract_multi_hand_data(res, i)
+                    hands.append(hand)
+            else:
+                if res["lm_score"] > self.lm_score_thresh:
+                    hand = self.extract_single_hand_data(res)
+                    hands = [hand]
+                else:
+                    hands = []
         # Statistics
         if self.stats:
             if res["type"] == 0:
@@ -486,7 +525,16 @@ class HandTracker:
                     self.nb_pd_inferences += 1
                 else: # res["type"] == 2
                     self.nb_lm_inferences_after_landmarks_ROI += 1
-                if res["lm_score"] < self.lm_score_thresh: self.nb_frames_no_hand += 1
+                no_hand = True
+                if isinstance(res["lm_score"], list):
+                    for score in res["lm_score"]:
+                        if score >= self.lm_score_thresh:
+                            no_hand = False
+                else:
+                    if res["lm_score"] >= self.lm_score_thresh: 
+                        no_hand = False
+                if no_hand:
+                    self.nb_frames_no_hand += 1
 
         return video_frame, hands, None
 

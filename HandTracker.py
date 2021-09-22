@@ -16,8 +16,6 @@ LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return cv2.resize(arr, shape).transpose(2,0,1)#.flatten()
 
-
-
 class HandTracker:
     """
     Mediapipe Hand Tracker for depthai
@@ -84,8 +82,6 @@ class HandTracker:
         self.stats = stats
         self.trace = trace
         self.use_gesture = use_gesture
-
-        
 
         self.device = dai.Device()
 
@@ -204,10 +200,11 @@ class HandTracker:
         self.glob_lm_rtrip_time = 0
         self.glob_spatial_rtrip_time = 0
 
-        if self.solo:
-            self.use_previous_landmarks = False
+        self.use_previous_landmarks = False
 
-        
+        self.hand_from_landmarks = None
+        self.duo_hands_from_landmarks = {"left": None, "right": None}
+
     def create_pipeline(self):
         print("Creating pipeline...")
         # Start defining a pipeline
@@ -328,7 +325,7 @@ class HandTracker:
             print("Creating Hand Landmark Neural Network...")          
             lm_nn = pipeline.createNeuralNetwork()
             lm_nn.setBlobPath(self.lm_model)
-            lm_nn.setNumInferenceThreads(1)
+            lm_nn.setNumInferenceThreads(2)
             # Hand landmark input
             self.lm_input_length = 224
             lm_in = pipeline.createXLinkIn()
@@ -488,7 +485,7 @@ class HandTracker:
         bag = {}
         self.fps.update()
         if self.input_type == "rgb":
-            if not self.solo or (self.solo and not self.use_previous_landmarks):
+            if not self.use_previous_landmarks:
                 # Send image manip config to the device
                 cfg = dai.ImageManipConfig()
                 # We prepare the input to the Palm detector
@@ -515,7 +512,7 @@ class HandTracker:
             else:
                 square_frame = video_frame
            
-            if not self.solo or not self.use_previous_landmarks:
+            if not self.use_previous_landmarks:
                 frame_nn = dai.ImgFrame()
                 frame_nn.setTimestamp(time.monotonic())
                 frame_nn.setWidth(self.pd_input_length)
@@ -525,7 +522,7 @@ class HandTracker:
                 pd_rtrip_time = now()
 
         # Get palm detection
-        if not self.solo or not self.use_previous_landmarks:
+        if not self.use_previous_landmarks:
             inference = self.q_pd_out.get()
             if self.input_type != "rgb": 
                 self.glob_pd_rtrip_time += now() - pd_rtrip_time
@@ -533,7 +530,10 @@ class HandTracker:
             self.nb_pd_inferences += 1  
             bag["pd_inference"] = 1 
         else:
-            self.hands = [self.hand_from_landmarks]
+            if self.solo:
+                self.hands = [self.hand_from_landmarks]
+            else:
+                self.hands = [self.duo_hands_from_landmarks["right"], self.duo_hands_from_landmarks["left"]]
 
         # Hand landmarks, send requests
         if self.use_lm:
@@ -549,7 +549,15 @@ class HandTracker:
                 self.lm_postprocess(h, inference)
                 self.nb_lm_inferences += 1
             bag["lm_inference"] = len(self.hands)
-            self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
+            temp_hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
+            if len(temp_hands) > 0:
+                # Making sure only one left hand one right hand is return everytime
+                self.hands = [temp_hands[0]]
+                for hand in temp_hands[1:]:
+                    if abs(hand.handedness - self.hands[0].handedness) > 0.4:
+                        self.hands.append(hand)
+            else:
+                self.hands = []
 
             if self.xyz:
                 self.query_xyz(self.spatial_loc_roi_from_wrist_landmark)
@@ -560,6 +568,18 @@ class HandTracker:
                     self.hand_from_landmarks = mpu.hand_landmarks_to_rect(self.hands[0])
                     self.use_previous_landmarks = True
                 else:
+                    self.use_previous_landmarks = False
+            else:
+                if len(self.hands) == 2:
+                    if self.hands[0].handedness >= 0.5:
+                        self.duo_hands_from_landmarks['right'] = mpu.hand_landmarks_to_rect(self.hands[0])
+                        self.duo_hands_from_landmarks['left'] = mpu.hand_landmarks_to_rect(self.hands[1])
+                    else:
+                        self.duo_hands_from_landmarks['right'] = mpu.hand_landmarks_to_rect(self.hands[1])
+                        self.duo_hands_from_landmarks['left'] = mpu.hand_landmarks_to_rect(self.hands[0])
+                    self.use_previous_landmarks = True
+                else:
+                    self.duo_hands_from_landmarks = {"left": None, "right": None}
                     self.use_previous_landmarks = False
             
             for hand in self.hands:
