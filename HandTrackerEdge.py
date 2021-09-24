@@ -297,7 +297,7 @@ class HandTracker:
         pre_lm_manip = pipeline.create(dai.node.ImageManip)
         pre_lm_manip.setMaxOutputFrameSize(self.lm_input_length*self.lm_input_length*3)
         pre_lm_manip.setWaitForConfigInput(True)
-        pre_lm_manip.inputImage.setQueueSize(2)
+        pre_lm_manip.inputImage.setQueueSize(1)
         pre_lm_manip.inputImage.setBlocking(False)
         cam.preview.link(pre_lm_manip.inputImage)
 

@@ -112,7 +112,8 @@ while True:
 
     # Constructing input data for landmark inference, the input data of both hands are sent for inference without 
     # waiting for inference results.
-    for hand in detected_hands:
+    last_hand = len(detected_hands) - 1
+    for i,hand in enumerate(detected_hands):
         sqn_rr_size, rotation, sqn_rr_center_x, sqn_rr_center_y = hand
         # Tell pre_lm_manip how to crop hand region 
         rr = RotatedRect()
@@ -124,6 +125,7 @@ while True:
         cfg = ImageManipConfig()
         cfg.setCropRotatedRect(rr, True)
         cfg.setResize(lm_input_size, lm_input_size)
+        cfg.setReusePreviousImage(False if i == last_hand else True)
         node.io['pre_lm_manip_cfg'].send(cfg)
         ${_TRACE} ("Manager sent config to pre_lm manip")
 
