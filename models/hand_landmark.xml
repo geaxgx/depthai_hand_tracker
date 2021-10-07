@@ -1,0 +1,5073 @@
+<?xml version="1.0" ?>
+<net name="hand_landmark" version="10">
+	<layers>
+		<layer id="0" name="input_1" type="Parameter" version="opset1">
+			<data element_type="f16" shape="1,3,224,224"/>
+			<output>
+				<port id="0" precision="FP16">
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>224</dim>
+					<dim>224</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="1" name="input_1/reverse_input_channels/Concat12138_const" type="Const" version="opset1">
+			<data element_type="f16" offset="0" shape="24,3,3,3" size="1296"/>
+			<output>
+				<port id="0" names="Conv2D/filter:0" precision="FP16">
+					<dim>24</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="2" name="Conv2D" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>224</dim>
+					<dim>224</dim>
+				</port>
+				<port id="1">
+					<dim>24</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="3" name="Add/y/EltwiseUnsqueeze5522_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1296" shape="1,24,1,1" size="48"/>
+			<output>
+				<port id="0" names="Add/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="4" name="Add" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="5" name="model/model/tf.nn.relu6/Relu6_model/model/batch_normalization/FusedBatchNormV3_model/model/batch_normalization_1/FusedBatchNormV3_model/model/depthwise_conv2d/depthwise_model/model/conv2d_9/Conv2D_model/model/conv2d/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6/Relu6_model/model/batch_normalization/FusedBatchNormV3_model/model/batch_normalization_1/FusedBatchNormV3_model/model/depthwise_conv2d/depthwise_model/model/conv2d_9/Conv2D_model/model/conv2d/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="6" name="1263712640_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1344" shape="24,1,1,3,3" size="432"/>
+			<output>
+				<port id="0" names="depthwise/filter_in:0" precision="FP16">
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="7" name="depthwise" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="8" name="Add_1/y/EltwiseUnsqueeze5526_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1776" shape="1,24,1,1" size="48"/>
+			<output>
+				<port id="0" names="Add_1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="9" name="Add_1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="10" name="model/model/tf.nn.relu6_1/Relu6_model/model/batch_normalization_1/FusedBatchNormV3_model/model/depthwise_conv2d/depthwise_model/model/conv2d_9/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_1/Relu6_model/model/batch_normalization_1/FusedBatchNormV3_model/model/depthwise_conv2d/depthwise_model/model/conv2d_9/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="11" name="Conv2D_1/Transpose7972_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1824" shape="8,24,1,1" size="384"/>
+			<output>
+				<port id="0" names="Conv2D_1/filter:0" precision="FP16">
+					<dim>8</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="12" name="Conv2D_1" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>8</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="13" name="model/model/batch_normalization_2/FusedBatchNormV3_model/model/conv2d_1/Conv2D1/y/EltwiseUnsqueeze5530_const" type="Const" version="opset1">
+			<data element_type="f16" offset="2208" shape="1,8,1,1" size="16"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_2/FusedBatchNormV3_model/model/conv2d_1/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="14" name="model/model/batch_normalization_2/FusedBatchNormV3_model/model/conv2d_1/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_2/FusedBatchNormV3_model/model/conv2d_1/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="15" name="Conv2D_2/Transpose7976_const" type="Const" version="opset1">
+			<data element_type="f16" offset="2224" shape="32,8,1,1" size="512"/>
+			<output>
+				<port id="0" names="Conv2D_2/filter:0" precision="FP16">
+					<dim>32</dim>
+					<dim>8</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="16" name="Conv2D_2" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>8</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>32</dim>
+					<dim>8</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="17" name="Add_2/y/EltwiseUnsqueeze5534_const" type="Const" version="opset1">
+			<data element_type="f16" offset="2736" shape="1,32,1,1" size="64"/>
+			<output>
+				<port id="0" names="Add_2/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="18" name="Add_2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="19" name="model/model/tf.nn.relu6_2/Relu6_model/model/batch_normalization_3/FusedBatchNormV3_model/model/batch_normalization_4/FusedBatchNormV3_model/model/depthwise_conv2d_1/depthwise_model/model/conv2d_2/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_2/Relu6_model/model/batch_normalization_3/FusedBatchNormV3_model/model/batch_normalization_4/FusedBatchNormV3_model/model/depthwise_conv2d_1/depthwise_model/model/conv2d_2/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="20" name="1266912672_const" type="Const" version="opset1">
+			<data element_type="f16" offset="2800" shape="32,1,1,3,3" size="576"/>
+			<output>
+				<port id="0" names="depthwise_1/filter_in:0" precision="FP16">
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="21" name="depthwise_1" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>112</dim>
+					<dim>112</dim>
+				</port>
+				<port id="1">
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="22" name="Add_3/y/EltwiseUnsqueeze5538_const" type="Const" version="opset1">
+			<data element_type="f16" offset="3376" shape="1,32,1,1" size="64"/>
+			<output>
+				<port id="0" names="Add_3/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="23" name="Add_3" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_3:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="24" name="model/model/tf.nn.relu6_3/Relu6_model/model/batch_normalization_4/FusedBatchNormV3_model/model/depthwise_conv2d_1/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_3/Relu6_model/model/batch_normalization_4/FusedBatchNormV3_model/model/depthwise_conv2d_1/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="25" name="Conv2D_3/Transpose7984_const" type="Const" version="opset1">
+			<data element_type="f16" offset="3440" shape="16,32,1,1" size="1024"/>
+			<output>
+				<port id="0" names="Conv2D_3/filter:0" precision="FP16">
+					<dim>16</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="26" name="Conv2D_3" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>32</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>16</dim>
+					<dim>32</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_3:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="27" name="model/model/batch_normalization_5/FusedBatchNormV3_model/model/conv2d_5/Conv2D_model/model/conv2d_3/Conv2D1/y/EltwiseUnsqueeze5542_const" type="Const" version="opset1">
+			<data element_type="f16" offset="4464" shape="1,16,1,1" size="32"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_5/FusedBatchNormV3_model/model/conv2d_5/Conv2D_model/model/conv2d_3/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="28" name="model/model/batch_normalization_5/FusedBatchNormV3_model/model/conv2d_5/Conv2D_model/model/conv2d_3/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_5/FusedBatchNormV3_model/model/conv2d_5/Conv2D_model/model/conv2d_3/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="29" name="Conv2D_4/Transpose7988_const" type="Const" version="opset1">
+			<data element_type="f16" offset="4496" shape="96,16,1,1" size="3072"/>
+			<output>
+				<port id="0" names="Conv2D_4/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="30" name="Conv2D_4" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_4:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="31" name="Add_4/y/EltwiseUnsqueeze5546_const" type="Const" version="opset1">
+			<data element_type="f16" offset="7568" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="Add_4/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="32" name="Add_4" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_4:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="33" name="model/model/tf.nn.relu6_4/Relu6_model/model/batch_normalization_6/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/conv2d_4/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_4/Relu6_model/model/batch_normalization_6/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/conv2d_4/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="34" name="1264112644_const" type="Const" version="opset1">
+			<data element_type="f16" offset="7760" shape="96,1,1,3,3" size="1728"/>
+			<output>
+				<port id="0" names="depthwise_2/filter_in:0" precision="FP16">
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="35" name="depthwise_2" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="36" name="Add_5/y/EltwiseUnsqueeze5550_const" type="Const" version="opset1">
+			<data element_type="f16" offset="9488" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="Add_5/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="37" name="Add_5" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_5:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="38" name="model/model/tf.nn.relu6_5/Relu6_model/model/batch_normalization_7/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/depthwise_conv2d_2/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_5/Relu6_model/model/batch_normalization_7/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/depthwise_conv2d_2/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="39" name="Conv2D_5/Transpose7996_const" type="Const" version="opset1">
+			<data element_type="f16" offset="9680" shape="16,96,1,1" size="3072"/>
+			<output>
+				<port id="0" names="Conv2D_5/filter:0" precision="FP16">
+					<dim>16</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="40" name="Conv2D_5" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>16</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_5:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="41" name="model/model/batch_normalization_8/FusedBatchNormV3_model/model/conv2d_5/Conv2D1/y/EltwiseUnsqueeze5554_const" type="Const" version="opset1">
+			<data element_type="f16" offset="12752" shape="1,16,1,1" size="32"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_8/FusedBatchNormV3_model/model/conv2d_5/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="42" name="model/model/batch_normalization_8/FusedBatchNormV3_model/model/conv2d_5/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_8/FusedBatchNormV3_model/model/conv2d_5/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="43" name="model/model/tf.__operators__.add/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="44" name="Conv2D_6/Transpose8000_const" type="Const" version="opset1">
+			<data element_type="f16" offset="12784" shape="96,16,1,1" size="3072"/>
+			<output>
+				<port id="0" names="Conv2D_6/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="45" name="Conv2D_6" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>16</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>16</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_6:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="46" name="Add_6/y/EltwiseUnsqueeze5558_const" type="Const" version="opset1">
+			<data element_type="f16" offset="15856" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="Add_6/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="47" name="Add_6" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_6:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="48" name="model/model/tf.nn.relu6_6/Relu6_model/model/batch_normalization_9/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/conv2d_6/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_6/Relu6_model/model/batch_normalization_9/FusedBatchNormV3_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D_model/model/conv2d_6/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="49" name="1260512608_const" type="Const" version="opset1">
+			<data element_type="f16" offset="16048" shape="96,1,1,5,5" size="4800"/>
+			<output>
+				<port id="0" names="depthwise_3/filter_in:0" precision="FP16">
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="50" name="depthwise_3" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>56</dim>
+					<dim>56</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_3:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="51" name="Add_7/y/EltwiseUnsqueeze5562_const" type="Const" version="opset1">
+			<data element_type="f16" offset="20848" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="Add_7/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="52" name="Add_7" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_7:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="53" name="model/model/tf.nn.relu6_7/Relu6_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_7/Relu6_model/model/batch_normalization_10/FusedBatchNormV3_model/model/depthwise_conv2d_3/depthwise_model/model/conv2d_29/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="54" name="Conv2D_7/Transpose8008_const" type="Const" version="opset1">
+			<data element_type="f16" offset="21040" shape="24,96,1,1" size="4608"/>
+			<output>
+				<port id="0" names="Conv2D_7/filter:0" precision="FP16">
+					<dim>24</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="55" name="Conv2D_7" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>24</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_7:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="56" name="model/model/batch_normalization_11/FusedBatchNormV3_model/model/conv2d_9/Conv2D_model/model/conv2d_7/Conv2D1/y/EltwiseUnsqueeze5566_const" type="Const" version="opset1">
+			<data element_type="f16" offset="25648" shape="1,24,1,1" size="48"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_11/FusedBatchNormV3_model/model/conv2d_9/Conv2D_model/model/conv2d_7/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="57" name="model/model/batch_normalization_11/FusedBatchNormV3_model/model/conv2d_9/Conv2D_model/model/conv2d_7/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_11/FusedBatchNormV3_model/model/conv2d_9/Conv2D_model/model/conv2d_7/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="58" name="Conv2D_8/Transpose8012_const" type="Const" version="opset1">
+			<data element_type="f16" offset="25696" shape="144,24,1,1" size="6912"/>
+			<output>
+				<port id="0" names="Conv2D_8/filter:0" precision="FP16">
+					<dim>144</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="59" name="Conv2D_8" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>144</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_8:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="60" name="Add_8/y/EltwiseUnsqueeze5570_const" type="Const" version="opset1">
+			<data element_type="f16" offset="32608" shape="1,144,1,1" size="288"/>
+			<output>
+				<port id="0" names="Add_8/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="61" name="Add_8" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_8:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="62" name="model/model/tf.nn.relu6_8/Relu6_model/model/batch_normalization_12/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/conv2d_8/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_8/Relu6_model/model/batch_normalization_12/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/conv2d_8/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="63" name="1261312616_const" type="Const" version="opset1">
+			<data element_type="f16" offset="32896" shape="144,1,1,5,5" size="7200"/>
+			<output>
+				<port id="0" names="depthwise_4/filter_in:0" precision="FP16">
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="64" name="depthwise_4" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_4:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="65" name="Add_9/y/EltwiseUnsqueeze5574_const" type="Const" version="opset1">
+			<data element_type="f16" offset="40096" shape="1,144,1,1" size="288"/>
+			<output>
+				<port id="0" names="Add_9/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="66" name="Add_9" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_9:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="67" name="model/model/tf.nn.relu6_9/Relu6_model/model/batch_normalization_13/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/depthwise_conv2d_4/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_9/Relu6_model/model/batch_normalization_13/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/depthwise_conv2d_4/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="68" name="Conv2D_9/Transpose8020_const" type="Const" version="opset1">
+			<data element_type="f16" offset="40384" shape="24,144,1,1" size="6912"/>
+			<output>
+				<port id="0" names="Conv2D_9/filter:0" precision="FP16">
+					<dim>24</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="69" name="Conv2D_9" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>24</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_9:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="70" name="model/model/batch_normalization_14/FusedBatchNormV3_model/model/conv2d_9/Conv2D1/y/EltwiseUnsqueeze5578_const" type="Const" version="opset1">
+			<data element_type="f16" offset="47296" shape="1,24,1,1" size="48"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_14/FusedBatchNormV3_model/model/conv2d_9/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="71" name="model/model/batch_normalization_14/FusedBatchNormV3_model/model/conv2d_9/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_14/FusedBatchNormV3_model/model/conv2d_9/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="72" name="model/model/tf.__operators__.add_1/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_1/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="73" name="Conv2D_10/Transpose8024_const" type="Const" version="opset1">
+			<data element_type="f16" offset="47344" shape="144,24,1,1" size="6912"/>
+			<output>
+				<port id="0" names="Conv2D_10/filter:0" precision="FP16">
+					<dim>144</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="74" name="Conv2D_10" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>24</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>144</dim>
+					<dim>24</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_10:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="75" name="Add_10/y/EltwiseUnsqueeze5582_const" type="Const" version="opset1">
+			<data element_type="f16" offset="54256" shape="1,144,1,1" size="288"/>
+			<output>
+				<port id="0" names="Add_10/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="76" name="Add_10" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_10:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="77" name="model/model/tf.nn.relu6_10/Relu6_model/model/batch_normalization_15/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/conv2d_10/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_10/Relu6_model/model/batch_normalization_15/FusedBatchNormV3_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D_model/model/conv2d_10/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="78" name="1262112624_const" type="Const" version="opset1">
+			<data element_type="f16" offset="54544" shape="144,1,1,3,3" size="2592"/>
+			<output>
+				<port id="0" names="depthwise_5/filter_in:0" precision="FP16">
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="79" name="depthwise_5" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>28</dim>
+					<dim>28</dim>
+				</port>
+				<port id="1">
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_5:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="80" name="Add_11/y/EltwiseUnsqueeze5586_const" type="Const" version="opset1">
+			<data element_type="f16" offset="57136" shape="1,144,1,1" size="288"/>
+			<output>
+				<port id="0" names="Add_11/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="81" name="Add_11" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_11:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="82" name="model/model/tf.nn.relu6_11/Relu6_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_11/Relu6_model/model/batch_normalization_16/FusedBatchNormV3_model/model/depthwise_conv2d_5/depthwise_model/model/conv2d_31/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="83" name="Conv2D_11/Transpose8032_const" type="Const" version="opset1">
+			<data element_type="f16" offset="57424" shape="40,144,1,1" size="11520"/>
+			<output>
+				<port id="0" names="Conv2D_11/filter:0" precision="FP16">
+					<dim>40</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="84" name="Conv2D_11" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>40</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_11:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="85" name="model/model/batch_normalization_17/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_11/Conv2D1/y/EltwiseUnsqueeze5590_const" type="Const" version="opset1">
+			<data element_type="f16" offset="68944" shape="1,40,1,1" size="80"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_17/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_11/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="86" name="model/model/batch_normalization_17/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_11/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_17/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_11/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="87" name="Conv2D_12/Transpose8036_const" type="Const" version="opset1">
+			<data element_type="f16" offset="69024" shape="240,40,1,1" size="19200"/>
+			<output>
+				<port id="0" names="Conv2D_12/filter:0" precision="FP16">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="88" name="Conv2D_12" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_12:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="89" name="Add_12/y/EltwiseUnsqueeze5594_const" type="Const" version="opset1">
+			<data element_type="f16" offset="88224" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_12/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="90" name="Add_12" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_12:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="91" name="model/model/tf.nn.relu6_12/Relu6_model/model/batch_normalization_18/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_12/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_12/Relu6_model/model/batch_normalization_18/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_12/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="92" name="1264512648_const" type="Const" version="opset1">
+			<data element_type="f16" offset="88704" shape="240,1,1,3,3" size="4320"/>
+			<output>
+				<port id="0" names="depthwise_6/filter_in:0" precision="FP16">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="93" name="depthwise_6" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_6:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="94" name="Add_13/y/EltwiseUnsqueeze5598_const" type="Const" version="opset1">
+			<data element_type="f16" offset="93024" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_13/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="95" name="Add_13" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_13:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="96" name="model/model/tf.nn.relu6_13/Relu6_model/model/batch_normalization_19/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/depthwise_conv2d_6/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_13/Relu6_model/model/batch_normalization_19/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/depthwise_conv2d_6/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="97" name="Conv2D_13/Transpose8044_const" type="Const" version="opset1">
+			<data element_type="f16" offset="93504" shape="40,240,1,1" size="19200"/>
+			<output>
+				<port id="0" names="Conv2D_13/filter:0" precision="FP16">
+					<dim>40</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="98" name="Conv2D_13" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>40</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_13:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="99" name="model/model/batch_normalization_20/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_13/Conv2D1/y/EltwiseUnsqueeze5602_const" type="Const" version="opset1">
+			<data element_type="f16" offset="112704" shape="1,40,1,1" size="80"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_20/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_13/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="100" name="model/model/batch_normalization_20/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_13/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_20/FusedBatchNormV3_model/model/conv2d_15/Conv2D_model/model/conv2d_13/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="101" name="model/model/tf.__operators__.add_2/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_2/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="102" name="Conv2D_14/Transpose8048_const" type="Const" version="opset1">
+			<data element_type="f16" offset="112784" shape="240,40,1,1" size="19200"/>
+			<output>
+				<port id="0" names="Conv2D_14/filter:0" precision="FP16">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="103" name="Conv2D_14" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_14:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="104" name="Add_14/y/EltwiseUnsqueeze5606_const" type="Const" version="opset1">
+			<data element_type="f16" offset="131984" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_14/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="105" name="Add_14" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_14:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="106" name="model/model/tf.nn.relu6_14/Relu6_model/model/batch_normalization_21/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_14/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_14/Relu6_model/model/batch_normalization_21/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_14/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="107" name="1263312636_const" type="Const" version="opset1">
+			<data element_type="f16" offset="132464" shape="240,1,1,3,3" size="4320"/>
+			<output>
+				<port id="0" names="depthwise_7/filter_in:0" precision="FP16">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="108" name="depthwise_7" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_7:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="109" name="Add_15/y/EltwiseUnsqueeze5610_const" type="Const" version="opset1">
+			<data element_type="f16" offset="136784" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_15/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="110" name="Add_15" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_15:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="111" name="model/model/tf.nn.relu6_15/Relu6_model/model/batch_normalization_22/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/depthwise_conv2d_7/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_15/Relu6_model/model/batch_normalization_22/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/depthwise_conv2d_7/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="112" name="Conv2D_15/Transpose8056_const" type="Const" version="opset1">
+			<data element_type="f16" offset="137264" shape="40,240,1,1" size="19200"/>
+			<output>
+				<port id="0" names="Conv2D_15/filter:0" precision="FP16">
+					<dim>40</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="113" name="Conv2D_15" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>40</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_15:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="114" name="model/model/batch_normalization_23/FusedBatchNormV3_model/model/conv2d_15/Conv2D1/y/EltwiseUnsqueeze5614_const" type="Const" version="opset1">
+			<data element_type="f16" offset="156464" shape="1,40,1,1" size="80"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_23/FusedBatchNormV3_model/model/conv2d_15/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="115" name="model/model/batch_normalization_23/FusedBatchNormV3_model/model/conv2d_15/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_23/FusedBatchNormV3_model/model/conv2d_15/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="116" name="model/model/tf.__operators__.add_3/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_3/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="117" name="Conv2D_16/Transpose8060_const" type="Const" version="opset1">
+			<data element_type="f16" offset="156544" shape="240,40,1,1" size="19200"/>
+			<output>
+				<port id="0" names="Conv2D_16/filter:0" precision="FP16">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="118" name="Conv2D_16" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>40</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>40</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_16:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="119" name="Add_16/y/EltwiseUnsqueeze5618_const" type="Const" version="opset1">
+			<data element_type="f16" offset="175744" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_16/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="120" name="Add_16" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_16:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="121" name="model/model/tf.nn.relu6_16/Relu6_model/model/batch_normalization_24/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_16/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_16/Relu6_model/model/batch_normalization_24/FusedBatchNormV3_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise_model/model/conv2d_16/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="122" name="1266512668_const" type="Const" version="opset1">
+			<data element_type="f16" offset="176224" shape="240,1,1,5,5" size="12000"/>
+			<output>
+				<port id="0" names="depthwise_8/filter_in:0" precision="FP16">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="123" name="depthwise_8" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_8:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="124" name="Add_17/y/EltwiseUnsqueeze5622_const" type="Const" version="opset1">
+			<data element_type="f16" offset="188224" shape="1,240,1,1" size="480"/>
+			<output>
+				<port id="0" names="Add_17/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="125" name="Add_17" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_17:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="126" name="model/model/tf.nn.relu6_17/Relu6_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_17/Relu6_model/model/batch_normalization_25/FusedBatchNormV3_model/model/depthwise_conv2d_8/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="127" name="Conv2D_17/Transpose8068_const" type="Const" version="opset1">
+			<data element_type="f16" offset="188704" shape="56,240,1,1" size="26880"/>
+			<output>
+				<port id="0" names="Conv2D_17/filter:0" precision="FP16">
+					<dim>56</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="128" name="Conv2D_17" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>240</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>56</dim>
+					<dim>240</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_17:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="129" name="model/model/batch_normalization_26/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_17/Conv2D1/y/EltwiseUnsqueeze5626_const" type="Const" version="opset1">
+			<data element_type="f16" offset="215584" shape="1,56,1,1" size="112"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_26/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_17/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="130" name="model/model/batch_normalization_26/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_17/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_26/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_17/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="131" name="Conv2D_18/Transpose8072_const" type="Const" version="opset1">
+			<data element_type="f16" offset="215696" shape="336,56,1,1" size="37632"/>
+			<output>
+				<port id="0" names="Conv2D_18/filter:0" precision="FP16">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="132" name="Conv2D_18" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_18:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="133" name="Add_18/y/EltwiseUnsqueeze5630_const" type="Const" version="opset1">
+			<data element_type="f16" offset="253328" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_18/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="134" name="Add_18" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_18:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="135" name="model/model/tf.nn.relu6_18/Relu6_model/model/batch_normalization_27/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_18/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_18/Relu6_model/model/batch_normalization_27/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_18/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="136" name="1266112664_const" type="Const" version="opset1">
+			<data element_type="f16" offset="254000" shape="336,1,1,5,5" size="16800"/>
+			<output>
+				<port id="0" names="depthwise_9/filter_in:0" precision="FP16">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="137" name="depthwise_9" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_9:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="138" name="Add_19/y/EltwiseUnsqueeze5634_const" type="Const" version="opset1">
+			<data element_type="f16" offset="270800" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_19/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="139" name="Add_19" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_19:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="140" name="model/model/tf.nn.relu6_19/Relu6_model/model/batch_normalization_28/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/depthwise_conv2d_9/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_19/Relu6_model/model/batch_normalization_28/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/depthwise_conv2d_9/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="141" name="Conv2D_19/Transpose8080_const" type="Const" version="opset1">
+			<data element_type="f16" offset="271472" shape="56,336,1,1" size="37632"/>
+			<output>
+				<port id="0" names="Conv2D_19/filter:0" precision="FP16">
+					<dim>56</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="142" name="Conv2D_19" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>56</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_19:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="143" name="model/model/batch_normalization_29/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_19/Conv2D1/y/EltwiseUnsqueeze5638_const" type="Const" version="opset1">
+			<data element_type="f16" offset="309104" shape="1,56,1,1" size="112"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_29/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_19/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="144" name="model/model/batch_normalization_29/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_19/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_29/FusedBatchNormV3_model/model/conv2d_21/Conv2D_model/model/conv2d_19/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="145" name="model/model/tf.__operators__.add_4/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_4/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="146" name="Conv2D_20/Transpose8084_const" type="Const" version="opset1">
+			<data element_type="f16" offset="309216" shape="336,56,1,1" size="37632"/>
+			<output>
+				<port id="0" names="Conv2D_20/filter:0" precision="FP16">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="147" name="Conv2D_20" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_20:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="148" name="Add_20/y/EltwiseUnsqueeze5642_const" type="Const" version="opset1">
+			<data element_type="f16" offset="346848" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_20/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="149" name="Add_20" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_20:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="150" name="model/model/tf.nn.relu6_20/Relu6_model/model/batch_normalization_30/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_20/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_20/Relu6_model/model/batch_normalization_30/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_20/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="151" name="1265312656_const" type="Const" version="opset1">
+			<data element_type="f16" offset="347520" shape="336,1,1,5,5" size="16800"/>
+			<output>
+				<port id="0" names="depthwise_10/filter_in:0" precision="FP16">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="152" name="depthwise_10" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_10:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="153" name="Add_21/y/EltwiseUnsqueeze5646_const" type="Const" version="opset1">
+			<data element_type="f16" offset="364320" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_21/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="154" name="Add_21" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_21:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="155" name="model/model/tf.nn.relu6_21/Relu6_model/model/batch_normalization_31/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/depthwise_conv2d_10/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_21/Relu6_model/model/batch_normalization_31/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/depthwise_conv2d_10/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="156" name="Conv2D_21/Transpose8092_const" type="Const" version="opset1">
+			<data element_type="f16" offset="364992" shape="56,336,1,1" size="37632"/>
+			<output>
+				<port id="0" names="Conv2D_21/filter:0" precision="FP16">
+					<dim>56</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="157" name="Conv2D_21" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>56</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_21:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="158" name="model/model/batch_normalization_32/FusedBatchNormV3_model/model/conv2d_21/Conv2D1/y/EltwiseUnsqueeze5650_const" type="Const" version="opset1">
+			<data element_type="f16" offset="402624" shape="1,56,1,1" size="112"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_32/FusedBatchNormV3_model/model/conv2d_21/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="159" name="model/model/batch_normalization_32/FusedBatchNormV3_model/model/conv2d_21/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_32/FusedBatchNormV3_model/model/conv2d_21/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="160" name="model/model/tf.__operators__.add_5/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_5/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="161" name="Conv2D_22/Transpose8096_const" type="Const" version="opset1">
+			<data element_type="f16" offset="402736" shape="336,56,1,1" size="37632"/>
+			<output>
+				<port id="0" names="Conv2D_22/filter:0" precision="FP16">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="162" name="Conv2D_22" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>56</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>56</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_22:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="163" name="Add_22/y/EltwiseUnsqueeze5654_const" type="Const" version="opset1">
+			<data element_type="f16" offset="440368" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_22/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="164" name="Add_22" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_22:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="165" name="model/model/tf.nn.relu6_22/Relu6_model/model/batch_normalization_33/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_22/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_22/Relu6_model/model/batch_normalization_33/FusedBatchNormV3_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise_model/model/conv2d_22/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="166" name="1264912652_const" type="Const" version="opset1">
+			<data element_type="f16" offset="441040" shape="336,1,1,5,5" size="16800"/>
+			<output>
+				<port id="0" names="depthwise_11/filter_in:0" precision="FP16">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="167" name="depthwise_11" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>14</dim>
+					<dim>14</dim>
+				</port>
+				<port id="1">
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_11:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="168" name="Add_23/y/EltwiseUnsqueeze5658_const" type="Const" version="opset1">
+			<data element_type="f16" offset="457840" shape="1,336,1,1" size="672"/>
+			<output>
+				<port id="0" names="Add_23/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="169" name="Add_23" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_23:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="170" name="model/model/tf.nn.relu6_23/Relu6_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_23/Relu6_model/model/batch_normalization_34/FusedBatchNormV3_model/model/depthwise_conv2d_11/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="171" name="Conv2D_23/Transpose8104_const" type="Const" version="opset1">
+			<data element_type="f16" offset="458512" shape="96,336,1,1" size="64512"/>
+			<output>
+				<port id="0" names="Conv2D_23/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="172" name="Conv2D_23" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>336</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>336</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_23:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="173" name="model/model/batch_normalization_35/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_23/Conv2D1/y/EltwiseUnsqueeze5662_const" type="Const" version="opset1">
+			<data element_type="f16" offset="523024" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_35/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_23/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="174" name="model/model/batch_normalization_35/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_23/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_35/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_23/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="175" name="Conv2D_24/Transpose8108_const" type="Const" version="opset1">
+			<data element_type="f16" offset="523216" shape="576,96,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_24/filter:0" precision="FP16">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="176" name="Conv2D_24" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_24:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="177" name="Add_24/y/EltwiseUnsqueeze5666_const" type="Const" version="opset1">
+			<data element_type="f16" offset="633808" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_24/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="178" name="Add_24" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_24:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="179" name="model/model/tf.nn.relu6_24/Relu6_model/model/batch_normalization_36/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_24/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_24/Relu6_model/model/batch_normalization_36/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_24/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="180" name="1260912612_const" type="Const" version="opset1">
+			<data element_type="f16" offset="634960" shape="576,1,1,5,5" size="28800"/>
+			<output>
+				<port id="0" names="depthwise_12/filter_in:0" precision="FP16">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="181" name="depthwise_12" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_12:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="182" name="Add_25/y/EltwiseUnsqueeze5670_const" type="Const" version="opset1">
+			<data element_type="f16" offset="663760" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_25/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="183" name="Add_25" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_25:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="184" name="model/model/tf.nn.relu6_25/Relu6_model/model/batch_normalization_37/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_12/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_25/Relu6_model/model/batch_normalization_37/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_12/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="185" name="Conv2D_25/Transpose8116_const" type="Const" version="opset1">
+			<data element_type="f16" offset="664912" shape="96,576,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_25/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="186" name="Conv2D_25" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_25:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="187" name="model/model/batch_normalization_38/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_25/Conv2D1/y/EltwiseUnsqueeze5674_const" type="Const" version="opset1">
+			<data element_type="f16" offset="775504" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_38/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_25/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="188" name="model/model/batch_normalization_38/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_25/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_38/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_25/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="189" name="model/model/tf.__operators__.add_6/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_6/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="190" name="Conv2D_26/Transpose8120_const" type="Const" version="opset1">
+			<data element_type="f16" offset="775696" shape="576,96,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_26/filter:0" precision="FP16">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="191" name="Conv2D_26" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_26:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="192" name="Add_26/y/EltwiseUnsqueeze5678_const" type="Const" version="opset1">
+			<data element_type="f16" offset="886288" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_26/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="193" name="Add_26" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_26:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="194" name="model/model/tf.nn.relu6_26/Relu6_model/model/batch_normalization_39/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_26/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_26/Relu6_model/model/batch_normalization_39/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_26/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="195" name="1261712620_const" type="Const" version="opset1">
+			<data element_type="f16" offset="887440" shape="576,1,1,5,5" size="28800"/>
+			<output>
+				<port id="0" names="depthwise_13/filter_in:0" precision="FP16">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="196" name="depthwise_13" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_13:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="197" name="Add_27/y/EltwiseUnsqueeze5682_const" type="Const" version="opset1">
+			<data element_type="f16" offset="916240" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_27/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="198" name="Add_27" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_27:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="199" name="model/model/tf.nn.relu6_27/Relu6_model/model/batch_normalization_40/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_13/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_27/Relu6_model/model/batch_normalization_40/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_13/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="200" name="Conv2D_27/Transpose8128_const" type="Const" version="opset1">
+			<data element_type="f16" offset="917392" shape="96,576,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_27/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="201" name="Conv2D_27" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_27:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="202" name="model/model/batch_normalization_41/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_27/Conv2D1/y/EltwiseUnsqueeze5686_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1027984" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_41/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_27/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="203" name="model/model/batch_normalization_41/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_27/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_41/FusedBatchNormV3_model/model/conv2d_29/Conv2D_model/model/conv2d_27/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="204" name="model/model/tf.__operators__.add_7/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_7/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="205" name="Conv2D_28/Transpose8132_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1028176" shape="576,96,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_28/filter:0" precision="FP16">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="206" name="Conv2D_28" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_28:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="207" name="Add_28/y/EltwiseUnsqueeze5690_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1138768" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_28/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="208" name="Add_28" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_28:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="209" name="model/model/tf.nn.relu6_28/Relu6_model/model/batch_normalization_42/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_28/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_28/Relu6_model/model/batch_normalization_42/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_28/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="210" name="1265712660_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1139920" shape="576,1,1,5,5" size="28800"/>
+			<output>
+				<port id="0" names="depthwise_14/filter_in:0" precision="FP16">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="211" name="depthwise_14" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>5</dim>
+					<dim>5</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_14:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="212" name="Add_29/y/EltwiseUnsqueeze5694_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1168720" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_29/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="213" name="Add_29" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_29:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="214" name="model/model/tf.nn.relu6_29/Relu6_model/model/batch_normalization_43/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_14/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_29/Relu6_model/model/batch_normalization_43/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/depthwise_conv2d_14/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="215" name="Conv2D_29/Transpose8140_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1169872" shape="96,576,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_29/filter:0" precision="FP16">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="216" name="Conv2D_29" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>96</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_29:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="217" name="model/model/batch_normalization_44/FusedBatchNormV3_model/model/conv2d_29/Conv2D1/y/EltwiseUnsqueeze5698_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1280464" shape="1,96,1,1" size="192"/>
+			<output>
+				<port id="0" names="model/model/batch_normalization_44/FusedBatchNormV3_model/model/conv2d_29/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="218" name="model/model/batch_normalization_44/FusedBatchNormV3_model/model/conv2d_29/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/batch_normalization_44/FusedBatchNormV3_model/model/conv2d_29/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="219" name="model/model/tf.__operators__.add_8/AddV2" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/tf.__operators__.add_8/AddV2:0" precision="FP16">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="220" name="Conv2D_30/Transpose8144_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1280656" shape="576,96,1,1" size="110592"/>
+			<output>
+				<port id="0" names="Conv2D_30/filter:0" precision="FP16">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="221" name="Conv2D_30" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>96</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>96</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_30:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="222" name="Add_30/y/EltwiseUnsqueeze5702_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1391248" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_30/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="223" name="Add_30" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_30:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="224" name="model/model/tf.nn.relu6_30/Relu6_model/model/batch_normalization_45/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_30/Conv2D" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_30/Relu6_model/model/batch_normalization_45/FusedBatchNormV3_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise_model/model/conv2d_30/Conv2D:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="225" name="1262912632_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1392400" shape="576,1,1,3,3" size="10368"/>
+			<output>
+				<port id="0" names="depthwise_15/filter_in:0" precision="FP16">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="226" name="depthwise_15" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_15:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="227" name="Add_31/y/EltwiseUnsqueeze5706_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1402768" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_31/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="228" name="Add_31" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_31:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="229" name="model/model/tf.nn.relu6_31/Relu6_model/model/batch_normalization_46/FusedBatchNormV3_model/model/depthwise_conv2d_15/depthwise_model/model/depthwise_conv2d_16/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_31/Relu6_model/model/batch_normalization_46/FusedBatchNormV3_model/model/depthwise_conv2d_15/depthwise_model/model/depthwise_conv2d_16/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="230" name="1262512628_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1403920" shape="576,1,1,3,3" size="10368"/>
+			<output>
+				<port id="0" names="depthwise_16/filter_in:0" precision="FP16">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="231" name="depthwise_16" type="GroupConvolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="2,2"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>7</dim>
+					<dim>7</dim>
+				</port>
+				<port id="1">
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+					<dim>3</dim>
+					<dim>3</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="depthwise_16:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="232" name="Add_32/y/EltwiseUnsqueeze5710_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1414288" shape="1,576,1,1" size="1152"/>
+			<output>
+				<port id="0" names="Add_32/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="233" name="Add_32" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Add_32:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="234" name="model/model/tf.nn.relu6_32/Relu6_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise" type="Clamp" version="opset1">
+			<data max="6.0" min="0.0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" names="model/model/tf.nn.relu6_32/Relu6_model/model/batch_normalization_47/FusedBatchNormV3_model/model/depthwise_conv2d_16/depthwise:0" precision="FP16">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="235" name="Conv2D_31/Transpose8156_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1415440" shape="144,576,1,1" size="165888"/>
+			<output>
+				<port id="0" names="Conv2D_31/filter:0" precision="FP16">
+					<dim>144</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="236" name="Conv2D_31" type="Convolution" version="opset1">
+			<data auto_pad="same_upper" dilations="1,1" pads_begin="0,0" pads_end="0,0" strides="1,1"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>576</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+				<port id="1">
+					<dim>144</dim>
+					<dim>576</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Conv2D_31:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="237" name="model/model/conv2d_31/Conv2D1/y/EltwiseUnsqueeze5714_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1581328" shape="1,144,1,1" size="288"/>
+			<output>
+				<port id="0" names="model/model/conv2d_31/Conv2D1/y:0" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="238" name="model/model/conv2d_31/Conv2D1" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" precision="FP16">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="239" name="model/model/conv2d_31/Conv2D1/Transpose/Cast_112892_const" type="Const" version="opset1">
+			<data element_type="i64" offset="1581616" shape="4" size="32"/>
+			<output>
+				<port id="0" precision="I64">
+					<dim>4</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="240" name="model/model/conv2d_31/Conv2D1/Transpose" type="Transpose" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>144</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+				</port>
+				<port id="1">
+					<dim>4</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/conv2d_31/Conv2D1:0" precision="FP16">
+					<dim>1</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+					<dim>144</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="241" name="Identity_dense/MatMul/ReadVariableOp/MinusOne9234_const" type="Const" version="opset1">
+			<data element_type="i64" offset="1581648" shape="1" size="8"/>
+			<output>
+				<port id="0" precision="I64">
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="242" name="Identity_dense/MatMul/1_port_transpose9024_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1581656" shape="63,2304" size="290304"/>
+			<output>
+				<port id="0" names="Identity_dense/MatMul/ReadVariableOp:0" precision="FP16">
+					<dim>63</dim>
+					<dim>2304</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="243" name="Identity_dense/MatMul/ReadVariableOp/Shape" type="ShapeOf" version="opset3">
+			<data output_type="i64"/>
+			<input>
+				<port id="0">
+					<dim>63</dim>
+					<dim>2304</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" precision="I64">
+					<dim>2</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="244" name="Identity_dense/MatMul/ReadVariableOp/Shape/Gather/Cast_112894_const" type="Const" version="opset1">
+			<data element_type="i32" offset="1871960" shape="1" size="4"/>
+			<output>
+				<port id="0" precision="I32">
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="245" name="Identity_dense/MatMul/ReadVariableOp/Shape/Gather/Cast_212896_const" type="Const" version="opset1">
+			<data element_type="i64" offset="1871964" shape="" size="8"/>
+			<output>
+				<port id="0" precision="I64"/>
+			</output>
+		</layer>
+		<layer id="246" name="Identity_dense/MatMul/ReadVariableOp/Shape/Gather" type="Gather" version="opset1">
+			<input>
+				<port id="0">
+					<dim>2</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+				</port>
+				<port id="2"/>
+			</input>
+			<output>
+				<port id="3" precision="I64">
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="247" name="Identity_dense/MatMul/ReadVariableOp/MinusOne/shapes_concat" type="Concat" version="opset1">
+			<data axis="0"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/flatten/Reshape/shape:0" precision="I64">
+					<dim>2</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="248" name="model/model/flatten/Reshape" type="Reshape" version="opset1">
+			<data special_zero="false"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>4</dim>
+					<dim>4</dim>
+					<dim>144</dim>
+				</port>
+				<port id="1">
+					<dim>2</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/flatten/Reshape:0" precision="FP16">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="249" name="Identity_dense/MatMul" type="MatMul" version="opset1">
+			<data transpose_a="false" transpose_b="true"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+				<port id="1">
+					<dim>63</dim>
+					<dim>2304</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Identity_dense/MatMul:0" precision="FP16">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="250" name="Identity_dense/BiasAdd/ReadVariableOp/EltwiseUnsqueeze5726_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1871972" shape="1,63" size="126"/>
+			<output>
+				<port id="0" names="Identity_dense/BiasAdd/ReadVariableOp:0" precision="FP16">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="251" name="Identity_dense/BiasAdd/Add" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="Identity_dense/BiasAdd:0" precision="FP16">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="252" name="Identity_dense/BiasAdd:0" type="Result" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>63</dim>
+				</port>
+			</input>
+		</layer>
+		<layer id="253" name="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/MatMul/1_port_transpose9028_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1872098" shape="1,2304" size="4608"/>
+			<output>
+				<port id="0" names="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/MatMul/ReadVariableOp:0" precision="FP16">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="254" name="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/MatMul" type="MatMul" version="opset1">
+			<data transpose_a="false" transpose_b="true"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/MatMul:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="255" name="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/BiasAdd/ReadVariableOp/EltwiseUnsqueeze5722_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1876706" shape="1,1" size="2"/>
+			<output>
+				<port id="0" names="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/BiasAdd/ReadVariableOp:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="256" name="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/BiasAdd/Add" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd:0,model/model/conv_handflag/MatMul_model/model/conv_handflag/BiasAdd_dense/BiasAdd:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="257" name="Identity_1" type="Sigmoid" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="258" name="Identity_1/sink_port_0" type="Result" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+		</layer>
+		<layer id="259" name="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/MatMul/1_port_transpose9020_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1876708" shape="1,2304" size="4608"/>
+			<output>
+				<port id="0" names="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/MatMul/ReadVariableOp:0" precision="FP16">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="260" name="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/MatMul" type="MatMul" version="opset1">
+			<data transpose_a="false" transpose_b="true"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>2304</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/MatMul:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="261" name="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/BiasAdd/ReadVariableOp/EltwiseUnsqueeze5718_const" type="Const" version="opset1">
+			<data element_type="f16" offset="1881316" shape="1,1" size="2"/>
+			<output>
+				<port id="0" names="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/BiasAdd/ReadVariableOp:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="262" name="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/BiasAdd/Add" type="Add" version="opset1">
+			<data auto_broadcast="numpy"/>
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+				<port id="1">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="2" names="model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd:0,model/model/conv_handedness/MatMul_model/model/conv_handedness/BiasAdd_dense/BiasAdd:0" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="263" name="Identity_2" type="Sigmoid" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+			<output>
+				<port id="1" precision="FP16">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</output>
+		</layer>
+		<layer id="264" name="Identity_2/sink_port_0" type="Result" version="opset1">
+			<input>
+				<port id="0">
+					<dim>1</dim>
+					<dim>1</dim>
+				</port>
+			</input>
+		</layer>
+	</layers>
+	<edges>
+		<edge from-layer="0" from-port="0" to-layer="2" to-port="0"/>
+		<edge from-layer="1" from-port="0" to-layer="2" to-port="1"/>
+		<edge from-layer="2" from-port="2" to-layer="4" to-port="0"/>
+		<edge from-layer="3" from-port="0" to-layer="4" to-port="1"/>
+		<edge from-layer="4" from-port="2" to-layer="5" to-port="0"/>
+		<edge from-layer="5" from-port="1" to-layer="7" to-port="0"/>
+		<edge from-layer="6" from-port="0" to-layer="7" to-port="1"/>
+		<edge from-layer="7" from-port="2" to-layer="9" to-port="0"/>
+		<edge from-layer="8" from-port="0" to-layer="9" to-port="1"/>
+		<edge from-layer="9" from-port="2" to-layer="10" to-port="0"/>
+		<edge from-layer="10" from-port="1" to-layer="12" to-port="0"/>
+		<edge from-layer="11" from-port="0" to-layer="12" to-port="1"/>
+		<edge from-layer="12" from-port="2" to-layer="14" to-port="0"/>
+		<edge from-layer="13" from-port="0" to-layer="14" to-port="1"/>
+		<edge from-layer="14" from-port="2" to-layer="16" to-port="0"/>
+		<edge from-layer="15" from-port="0" to-layer="16" to-port="1"/>
+		<edge from-layer="16" from-port="2" to-layer="18" to-port="0"/>
+		<edge from-layer="17" from-port="0" to-layer="18" to-port="1"/>
+		<edge from-layer="18" from-port="2" to-layer="19" to-port="0"/>
+		<edge from-layer="19" from-port="1" to-layer="21" to-port="0"/>
+		<edge from-layer="20" from-port="0" to-layer="21" to-port="1"/>
+		<edge from-layer="21" from-port="2" to-layer="23" to-port="0"/>
+		<edge from-layer="22" from-port="0" to-layer="23" to-port="1"/>
+		<edge from-layer="23" from-port="2" to-layer="24" to-port="0"/>
+		<edge from-layer="24" from-port="1" to-layer="26" to-port="0"/>
+		<edge from-layer="25" from-port="0" to-layer="26" to-port="1"/>
+		<edge from-layer="26" from-port="2" to-layer="28" to-port="0"/>
+		<edge from-layer="27" from-port="0" to-layer="28" to-port="1"/>
+		<edge from-layer="28" from-port="2" to-layer="30" to-port="0"/>
+		<edge from-layer="29" from-port="0" to-layer="30" to-port="1"/>
+		<edge from-layer="30" from-port="2" to-layer="32" to-port="0"/>
+		<edge from-layer="31" from-port="0" to-layer="32" to-port="1"/>
+		<edge from-layer="32" from-port="2" to-layer="33" to-port="0"/>
+		<edge from-layer="33" from-port="1" to-layer="35" to-port="0"/>
+		<edge from-layer="34" from-port="0" to-layer="35" to-port="1"/>
+		<edge from-layer="35" from-port="2" to-layer="37" to-port="0"/>
+		<edge from-layer="36" from-port="0" to-layer="37" to-port="1"/>
+		<edge from-layer="37" from-port="2" to-layer="38" to-port="0"/>
+		<edge from-layer="38" from-port="1" to-layer="40" to-port="0"/>
+		<edge from-layer="39" from-port="0" to-layer="40" to-port="1"/>
+		<edge from-layer="40" from-port="2" to-layer="42" to-port="0"/>
+		<edge from-layer="41" from-port="0" to-layer="42" to-port="1"/>
+		<edge from-layer="42" from-port="2" to-layer="43" to-port="0"/>
+		<edge from-layer="28" from-port="2" to-layer="43" to-port="1"/>
+		<edge from-layer="43" from-port="2" to-layer="45" to-port="0"/>
+		<edge from-layer="44" from-port="0" to-layer="45" to-port="1"/>
+		<edge from-layer="45" from-port="2" to-layer="47" to-port="0"/>
+		<edge from-layer="46" from-port="0" to-layer="47" to-port="1"/>
+		<edge from-layer="47" from-port="2" to-layer="48" to-port="0"/>
+		<edge from-layer="48" from-port="1" to-layer="50" to-port="0"/>
+		<edge from-layer="49" from-port="0" to-layer="50" to-port="1"/>
+		<edge from-layer="50" from-port="2" to-layer="52" to-port="0"/>
+		<edge from-layer="51" from-port="0" to-layer="52" to-port="1"/>
+		<edge from-layer="52" from-port="2" to-layer="53" to-port="0"/>
+		<edge from-layer="53" from-port="1" to-layer="55" to-port="0"/>
+		<edge from-layer="54" from-port="0" to-layer="55" to-port="1"/>
+		<edge from-layer="55" from-port="2" to-layer="57" to-port="0"/>
+		<edge from-layer="56" from-port="0" to-layer="57" to-port="1"/>
+		<edge from-layer="57" from-port="2" to-layer="59" to-port="0"/>
+		<edge from-layer="58" from-port="0" to-layer="59" to-port="1"/>
+		<edge from-layer="59" from-port="2" to-layer="61" to-port="0"/>
+		<edge from-layer="60" from-port="0" to-layer="61" to-port="1"/>
+		<edge from-layer="61" from-port="2" to-layer="62" to-port="0"/>
+		<edge from-layer="62" from-port="1" to-layer="64" to-port="0"/>
+		<edge from-layer="63" from-port="0" to-layer="64" to-port="1"/>
+		<edge from-layer="64" from-port="2" to-layer="66" to-port="0"/>
+		<edge from-layer="65" from-port="0" to-layer="66" to-port="1"/>
+		<edge from-layer="66" from-port="2" to-layer="67" to-port="0"/>
+		<edge from-layer="67" from-port="1" to-layer="69" to-port="0"/>
+		<edge from-layer="68" from-port="0" to-layer="69" to-port="1"/>
+		<edge from-layer="69" from-port="2" to-layer="71" to-port="0"/>
+		<edge from-layer="70" from-port="0" to-layer="71" to-port="1"/>
+		<edge from-layer="71" from-port="2" to-layer="72" to-port="0"/>
+		<edge from-layer="57" from-port="2" to-layer="72" to-port="1"/>
+		<edge from-layer="72" from-port="2" to-layer="74" to-port="0"/>
+		<edge from-layer="73" from-port="0" to-layer="74" to-port="1"/>
+		<edge from-layer="74" from-port="2" to-layer="76" to-port="0"/>
+		<edge from-layer="75" from-port="0" to-layer="76" to-port="1"/>
+		<edge from-layer="76" from-port="2" to-layer="77" to-port="0"/>
+		<edge from-layer="77" from-port="1" to-layer="79" to-port="0"/>
+		<edge from-layer="78" from-port="0" to-layer="79" to-port="1"/>
+		<edge from-layer="79" from-port="2" to-layer="81" to-port="0"/>
+		<edge from-layer="80" from-port="0" to-layer="81" to-port="1"/>
+		<edge from-layer="81" from-port="2" to-layer="82" to-port="0"/>
+		<edge from-layer="82" from-port="1" to-layer="84" to-port="0"/>
+		<edge from-layer="83" from-port="0" to-layer="84" to-port="1"/>
+		<edge from-layer="84" from-port="2" to-layer="86" to-port="0"/>
+		<edge from-layer="85" from-port="0" to-layer="86" to-port="1"/>
+		<edge from-layer="86" from-port="2" to-layer="88" to-port="0"/>
+		<edge from-layer="87" from-port="0" to-layer="88" to-port="1"/>
+		<edge from-layer="88" from-port="2" to-layer="90" to-port="0"/>
+		<edge from-layer="89" from-port="0" to-layer="90" to-port="1"/>
+		<edge from-layer="90" from-port="2" to-layer="91" to-port="0"/>
+		<edge from-layer="91" from-port="1" to-layer="93" to-port="0"/>
+		<edge from-layer="92" from-port="0" to-layer="93" to-port="1"/>
+		<edge from-layer="93" from-port="2" to-layer="95" to-port="0"/>
+		<edge from-layer="94" from-port="0" to-layer="95" to-port="1"/>
+		<edge from-layer="95" from-port="2" to-layer="96" to-port="0"/>
+		<edge from-layer="96" from-port="1" to-layer="98" to-port="0"/>
+		<edge from-layer="97" from-port="0" to-layer="98" to-port="1"/>
+		<edge from-layer="98" from-port="2" to-layer="100" to-port="0"/>
+		<edge from-layer="99" from-port="0" to-layer="100" to-port="1"/>
+		<edge from-layer="100" from-port="2" to-layer="101" to-port="0"/>
+		<edge from-layer="86" from-port="2" to-layer="101" to-port="1"/>
+		<edge from-layer="101" from-port="2" to-layer="103" to-port="0"/>
+		<edge from-layer="102" from-port="0" to-layer="103" to-port="1"/>
+		<edge from-layer="103" from-port="2" to-layer="105" to-port="0"/>
+		<edge from-layer="104" from-port="0" to-layer="105" to-port="1"/>
+		<edge from-layer="105" from-port="2" to-layer="106" to-port="0"/>
+		<edge from-layer="106" from-port="1" to-layer="108" to-port="0"/>
+		<edge from-layer="107" from-port="0" to-layer="108" to-port="1"/>
+		<edge from-layer="108" from-port="2" to-layer="110" to-port="0"/>
+		<edge from-layer="109" from-port="0" to-layer="110" to-port="1"/>
+		<edge from-layer="110" from-port="2" to-layer="111" to-port="0"/>
+		<edge from-layer="111" from-port="1" to-layer="113" to-port="0"/>
+		<edge from-layer="112" from-port="0" to-layer="113" to-port="1"/>
+		<edge from-layer="113" from-port="2" to-layer="115" to-port="0"/>
+		<edge from-layer="114" from-port="0" to-layer="115" to-port="1"/>
+		<edge from-layer="115" from-port="2" to-layer="116" to-port="0"/>
+		<edge from-layer="101" from-port="2" to-layer="116" to-port="1"/>
+		<edge from-layer="116" from-port="2" to-layer="118" to-port="0"/>
+		<edge from-layer="117" from-port="0" to-layer="118" to-port="1"/>
+		<edge from-layer="118" from-port="2" to-layer="120" to-port="0"/>
+		<edge from-layer="119" from-port="0" to-layer="120" to-port="1"/>
+		<edge from-layer="120" from-port="2" to-layer="121" to-port="0"/>
+		<edge from-layer="121" from-port="1" to-layer="123" to-port="0"/>
+		<edge from-layer="122" from-port="0" to-layer="123" to-port="1"/>
+		<edge from-layer="123" from-port="2" to-layer="125" to-port="0"/>
+		<edge from-layer="124" from-port="0" to-layer="125" to-port="1"/>
+		<edge from-layer="125" from-port="2" to-layer="126" to-port="0"/>
+		<edge from-layer="126" from-port="1" to-layer="128" to-port="0"/>
+		<edge from-layer="127" from-port="0" to-layer="128" to-port="1"/>
+		<edge from-layer="128" from-port="2" to-layer="130" to-port="0"/>
+		<edge from-layer="129" from-port="0" to-layer="130" to-port="1"/>
+		<edge from-layer="130" from-port="2" to-layer="132" to-port="0"/>
+		<edge from-layer="131" from-port="0" to-layer="132" to-port="1"/>
+		<edge from-layer="132" from-port="2" to-layer="134" to-port="0"/>
+		<edge from-layer="133" from-port="0" to-layer="134" to-port="1"/>
+		<edge from-layer="134" from-port="2" to-layer="135" to-port="0"/>
+		<edge from-layer="135" from-port="1" to-layer="137" to-port="0"/>
+		<edge from-layer="136" from-port="0" to-layer="137" to-port="1"/>
+		<edge from-layer="137" from-port="2" to-layer="139" to-port="0"/>
+		<edge from-layer="138" from-port="0" to-layer="139" to-port="1"/>
+		<edge from-layer="139" from-port="2" to-layer="140" to-port="0"/>
+		<edge from-layer="140" from-port="1" to-layer="142" to-port="0"/>
+		<edge from-layer="141" from-port="0" to-layer="142" to-port="1"/>
+		<edge from-layer="142" from-port="2" to-layer="144" to-port="0"/>
+		<edge from-layer="143" from-port="0" to-layer="144" to-port="1"/>
+		<edge from-layer="144" from-port="2" to-layer="145" to-port="0"/>
+		<edge from-layer="130" from-port="2" to-layer="145" to-port="1"/>
+		<edge from-layer="145" from-port="2" to-layer="147" to-port="0"/>
+		<edge from-layer="146" from-port="0" to-layer="147" to-port="1"/>
+		<edge from-layer="147" from-port="2" to-layer="149" to-port="0"/>
+		<edge from-layer="148" from-port="0" to-layer="149" to-port="1"/>
+		<edge from-layer="149" from-port="2" to-layer="150" to-port="0"/>
+		<edge from-layer="150" from-port="1" to-layer="152" to-port="0"/>
+		<edge from-layer="151" from-port="0" to-layer="152" to-port="1"/>
+		<edge from-layer="152" from-port="2" to-layer="154" to-port="0"/>
+		<edge from-layer="153" from-port="0" to-layer="154" to-port="1"/>
+		<edge from-layer="154" from-port="2" to-layer="155" to-port="0"/>
+		<edge from-layer="155" from-port="1" to-layer="157" to-port="0"/>
+		<edge from-layer="156" from-port="0" to-layer="157" to-port="1"/>
+		<edge from-layer="157" from-port="2" to-layer="159" to-port="0"/>
+		<edge from-layer="158" from-port="0" to-layer="159" to-port="1"/>
+		<edge from-layer="159" from-port="2" to-layer="160" to-port="0"/>
+		<edge from-layer="145" from-port="2" to-layer="160" to-port="1"/>
+		<edge from-layer="160" from-port="2" to-layer="162" to-port="0"/>
+		<edge from-layer="161" from-port="0" to-layer="162" to-port="1"/>
+		<edge from-layer="162" from-port="2" to-layer="164" to-port="0"/>
+		<edge from-layer="163" from-port="0" to-layer="164" to-port="1"/>
+		<edge from-layer="164" from-port="2" to-layer="165" to-port="0"/>
+		<edge from-layer="165" from-port="1" to-layer="167" to-port="0"/>
+		<edge from-layer="166" from-port="0" to-layer="167" to-port="1"/>
+		<edge from-layer="167" from-port="2" to-layer="169" to-port="0"/>
+		<edge from-layer="168" from-port="0" to-layer="169" to-port="1"/>
+		<edge from-layer="169" from-port="2" to-layer="170" to-port="0"/>
+		<edge from-layer="170" from-port="1" to-layer="172" to-port="0"/>
+		<edge from-layer="171" from-port="0" to-layer="172" to-port="1"/>
+		<edge from-layer="172" from-port="2" to-layer="174" to-port="0"/>
+		<edge from-layer="173" from-port="0" to-layer="174" to-port="1"/>
+		<edge from-layer="174" from-port="2" to-layer="176" to-port="0"/>
+		<edge from-layer="175" from-port="0" to-layer="176" to-port="1"/>
+		<edge from-layer="176" from-port="2" to-layer="178" to-port="0"/>
+		<edge from-layer="177" from-port="0" to-layer="178" to-port="1"/>
+		<edge from-layer="178" from-port="2" to-layer="179" to-port="0"/>
+		<edge from-layer="179" from-port="1" to-layer="181" to-port="0"/>
+		<edge from-layer="180" from-port="0" to-layer="181" to-port="1"/>
+		<edge from-layer="181" from-port="2" to-layer="183" to-port="0"/>
+		<edge from-layer="182" from-port="0" to-layer="183" to-port="1"/>
+		<edge from-layer="183" from-port="2" to-layer="184" to-port="0"/>
+		<edge from-layer="184" from-port="1" to-layer="186" to-port="0"/>
+		<edge from-layer="185" from-port="0" to-layer="186" to-port="1"/>
+		<edge from-layer="186" from-port="2" to-layer="188" to-port="0"/>
+		<edge from-layer="187" from-port="0" to-layer="188" to-port="1"/>
+		<edge from-layer="188" from-port="2" to-layer="189" to-port="0"/>
+		<edge from-layer="174" from-port="2" to-layer="189" to-port="1"/>
+		<edge from-layer="189" from-port="2" to-layer="191" to-port="0"/>
+		<edge from-layer="190" from-port="0" to-layer="191" to-port="1"/>
+		<edge from-layer="191" from-port="2" to-layer="193" to-port="0"/>
+		<edge from-layer="192" from-port="0" to-layer="193" to-port="1"/>
+		<edge from-layer="193" from-port="2" to-layer="194" to-port="0"/>
+		<edge from-layer="194" from-port="1" to-layer="196" to-port="0"/>
+		<edge from-layer="195" from-port="0" to-layer="196" to-port="1"/>
+		<edge from-layer="196" from-port="2" to-layer="198" to-port="0"/>
+		<edge from-layer="197" from-port="0" to-layer="198" to-port="1"/>
+		<edge from-layer="198" from-port="2" to-layer="199" to-port="0"/>
+		<edge from-layer="199" from-port="1" to-layer="201" to-port="0"/>
+		<edge from-layer="200" from-port="0" to-layer="201" to-port="1"/>
+		<edge from-layer="201" from-port="2" to-layer="203" to-port="0"/>
+		<edge from-layer="202" from-port="0" to-layer="203" to-port="1"/>
+		<edge from-layer="203" from-port="2" to-layer="204" to-port="0"/>
+		<edge from-layer="189" from-port="2" to-layer="204" to-port="1"/>
+		<edge from-layer="204" from-port="2" to-layer="206" to-port="0"/>
+		<edge from-layer="205" from-port="0" to-layer="206" to-port="1"/>
+		<edge from-layer="206" from-port="2" to-layer="208" to-port="0"/>
+		<edge from-layer="207" from-port="0" to-layer="208" to-port="1"/>
+		<edge from-layer="208" from-port="2" to-layer="209" to-port="0"/>
+		<edge from-layer="209" from-port="1" to-layer="211" to-port="0"/>
+		<edge from-layer="210" from-port="0" to-layer="211" to-port="1"/>
+		<edge from-layer="211" from-port="2" to-layer="213" to-port="0"/>
+		<edge from-layer="212" from-port="0" to-layer="213" to-port="1"/>
+		<edge from-layer="213" from-port="2" to-layer="214" to-port="0"/>
+		<edge from-layer="214" from-port="1" to-layer="216" to-port="0"/>
+		<edge from-layer="215" from-port="0" to-layer="216" to-port="1"/>
+		<edge from-layer="216" from-port="2" to-layer="218" to-port="0"/>
+		<edge from-layer="217" from-port="0" to-layer="218" to-port="1"/>
+		<edge from-layer="218" from-port="2" to-layer="219" to-port="0"/>
+		<edge from-layer="204" from-port="2" to-layer="219" to-port="1"/>
+		<edge from-layer="219" from-port="2" to-layer="221" to-port="0"/>
+		<edge from-layer="220" from-port="0" to-layer="221" to-port="1"/>
+		<edge from-layer="221" from-port="2" to-layer="223" to-port="0"/>
+		<edge from-layer="222" from-port="0" to-layer="223" to-port="1"/>
+		<edge from-layer="223" from-port="2" to-layer="224" to-port="0"/>
+		<edge from-layer="224" from-port="1" to-layer="226" to-port="0"/>
+		<edge from-layer="225" from-port="0" to-layer="226" to-port="1"/>
+		<edge from-layer="226" from-port="2" to-layer="228" to-port="0"/>
+		<edge from-layer="227" from-port="0" to-layer="228" to-port="1"/>
+		<edge from-layer="228" from-port="2" to-layer="229" to-port="0"/>
+		<edge from-layer="229" from-port="1" to-layer="231" to-port="0"/>
+		<edge from-layer="230" from-port="0" to-layer="231" to-port="1"/>
+		<edge from-layer="231" from-port="2" to-layer="233" to-port="0"/>
+		<edge from-layer="232" from-port="0" to-layer="233" to-port="1"/>
+		<edge from-layer="233" from-port="2" to-layer="234" to-port="0"/>
+		<edge from-layer="234" from-port="1" to-layer="236" to-port="0"/>
+		<edge from-layer="235" from-port="0" to-layer="236" to-port="1"/>
+		<edge from-layer="236" from-port="2" to-layer="238" to-port="0"/>
+		<edge from-layer="237" from-port="0" to-layer="238" to-port="1"/>
+		<edge from-layer="238" from-port="2" to-layer="240" to-port="0"/>
+		<edge from-layer="239" from-port="0" to-layer="240" to-port="1"/>
+		<edge from-layer="242" from-port="0" to-layer="243" to-port="0"/>
+		<edge from-layer="243" from-port="1" to-layer="246" to-port="0"/>
+		<edge from-layer="244" from-port="0" to-layer="246" to-port="1"/>
+		<edge from-layer="245" from-port="0" to-layer="246" to-port="2"/>
+		<edge from-layer="241" from-port="0" to-layer="247" to-port="0"/>
+		<edge from-layer="246" from-port="3" to-layer="247" to-port="1"/>
+		<edge from-layer="240" from-port="2" to-layer="248" to-port="0"/>
+		<edge from-layer="247" from-port="2" to-layer="248" to-port="1"/>
+		<edge from-layer="248" from-port="2" to-layer="249" to-port="0"/>
+		<edge from-layer="242" from-port="0" to-layer="249" to-port="1"/>
+		<edge from-layer="249" from-port="2" to-layer="251" to-port="0"/>
+		<edge from-layer="250" from-port="0" to-layer="251" to-port="1"/>
+		<edge from-layer="251" from-port="2" to-layer="252" to-port="0"/>
+		<edge from-layer="248" from-port="2" to-layer="254" to-port="0"/>
+		<edge from-layer="253" from-port="0" to-layer="254" to-port="1"/>
+		<edge from-layer="254" from-port="2" to-layer="256" to-port="0"/>
+		<edge from-layer="255" from-port="0" to-layer="256" to-port="1"/>
+		<edge from-layer="256" from-port="2" to-layer="257" to-port="0"/>
+		<edge from-layer="257" from-port="1" to-layer="258" to-port="0"/>
+		<edge from-layer="248" from-port="2" to-layer="260" to-port="0"/>
+		<edge from-layer="259" from-port="0" to-layer="260" to-port="1"/>
+		<edge from-layer="260" from-port="2" to-layer="262" to-port="0"/>
+		<edge from-layer="261" from-port="0" to-layer="262" to-port="1"/>
+		<edge from-layer="262" from-port="2" to-layer="263" to-port="0"/>
+		<edge from-layer="263" from-port="1" to-layer="264" to-port="0"/>
+	</edges>
+	<meta_data>
+		<MO_version value="2021.3.0-2787-60059f2c755-releases/2021/3"/>
+		<cli_parameters>
+			<data_type value="FP16"/>
+			<disable_nhwc_to_nchw value="False"/>
+			<disable_resnet_optimization value="False"/>
+			<disable_weights_compression value="False"/>
+			<enable_concat_optimization value="False"/>
+			<extensions value="DIR"/>
+			<framework value="tf"/>
+			<freeze_placeholder_with_value value="{}"/>
+			<generate_deprecated_IR_V7 value="False"/>
+			<input_model_is_text value="False"/>
+			<keep_shape_ops value="True"/>
+			<log_level value="ERROR"/>
+			<mean_scale_values value="[(None, array([255., 255., 255.]))]"/>
+			<mean_values value="()"/>
+			<model_name value="DIR"/>
+			<output_dir value="DIR"/>
+			<placeholder_data_types value="{}"/>
+			<progress value="False"/>
+			<reverse_input_channels value="True"/>
+			<saved_model_dir value="DIR"/>
+			<scale_values value="[255.0,255.0,255.0]"/>
+			<silent value="False"/>
+			<static_shape value="False"/>
+			<stream_output value="False"/>
+			<unset unset_cli_parameters="batch, disable_fusing, disable_gfusing, finegrain_fusing, input, input_checkpoint, input_meta_graph, input_model, input_shape, move_to_preprocess, output, placeholder_shapes, saved_model_tags, scale, tensorboard_logdir, tensorflow_custom_layer_libraries, tensorflow_custom_operations_config_update, tensorflow_object_detection_api_pipeline_config, tensorflow_use_custom_operations_config, transformations_config"/>
+		</cli_parameters>
+	</meta_data>
+</net>
