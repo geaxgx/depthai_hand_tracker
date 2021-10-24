@@ -39,6 +39,23 @@ class HandRegion:
         attrs = vars(self)
         print('\n'.join("%s: %s" % item for item in attrs.items()))
 
+class HandednessAverage:
+    """
+    Used to store the average handeness
+    Why ? Handedness inferred by the landmark model is not perfect. For certain poses, it is not rare that the model thinks 
+    that a right hand is a left hand (or vice versa). Instead of using the last inferred handedness, we prefer to use the average 
+    of the inferred handedness on the last frames. This gives more robustness.
+    """
+    def __init__(self):
+        self._total_handedness = 0
+        self._nb = 0
+    def update(self, new_handedness):
+        self._total_handedness += new_handedness
+        self._nb += 1
+        return self._total_handedness / self._nb
+    def reset(self):
+        self._total_handedness = self._nb = 0
+
 
 SSDAnchorOptions = namedtuple('SSDAnchorOptions',[
         'num_layers',
@@ -235,7 +252,7 @@ def non_max_suppression(regions, nms_thresh):
     # boxes = [r.box for r in regions]
     boxes = [ [int(x*1000) for x in r.pd_box] for r in regions]        
     scores = [r.pd_score for r in regions]
-    indices = cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh)
+    indices = cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) # Not using top_k=2 here because it does not give expected result. Bug ?
     return [regions[i[0]] for i in indices]
 
 def normalize_radians(angle):
@@ -381,7 +398,7 @@ def warp_rect_img(rect_points, img, w, h):
 
 def distance(a, b):
     """
-    a, b: 2 points in 3D (x,y,z)
+    a, b: 2 points (in 2D or 3D)
     """
     return np.linalg.norm(a-b)
 
@@ -438,6 +455,69 @@ def find_isp_scale_params(size, resolution, is_height=True):
             min_dist = dist
     return candidate, size_candidates[candidate]
 
+def recognize_gesture(hand):           
+    # Finger states
+    # state: -1=unknown, 0=close, 1=open
+    d_3_5 = distance(hand.norm_landmarks[3], hand.norm_landmarks[5])
+    d_2_3 = distance(hand.norm_landmarks[2], hand.norm_landmarks[3])
+    angle0 = angle(hand.norm_landmarks[0], hand.norm_landmarks[1], hand.norm_landmarks[2])
+    angle1 = angle(hand.norm_landmarks[1], hand.norm_landmarks[2], hand.norm_landmarks[3])
+    angle2 = angle(hand.norm_landmarks[2], hand.norm_landmarks[3], hand.norm_landmarks[4])
+    hand.thumb_angle = angle0+angle1+angle2
+    if angle0+angle1+angle2 > 460 and d_3_5 / d_2_3 > 1.2: 
+        hand.thumb_state = 1
+    else:
+        hand.thumb_state = 0
+
+    if hand.norm_landmarks[8][1] < hand.norm_landmarks[7][1] < hand.norm_landmarks[6][1]:
+        hand.index_state = 1
+    elif hand.norm_landmarks[6][1] < hand.norm_landmarks[8][1]:
+        hand.index_state = 0
+    else:
+        hand.index_state = -1
+
+    if hand.norm_landmarks[12][1] < hand.norm_landmarks[11][1] < hand.norm_landmarks[10][1]:
+        hand.middle_state = 1
+    elif hand.norm_landmarks[10][1] < hand.norm_landmarks[12][1]:
+        hand.middle_state = 0
+    else:
+        hand.middle_state = -1
+
+    if hand.norm_landmarks[16][1] < hand.norm_landmarks[15][1] < hand.norm_landmarks[14][1]:
+        hand.ring_state = 1
+    elif hand.norm_landmarks[14][1] < hand.norm_landmarks[16][1]:
+        hand.ring_state = 0
+    else:
+        hand.ring_state = -1
+
+    if hand.norm_landmarks[20][1] < hand.norm_landmarks[19][1] < hand.norm_landmarks[18][1]:
+        hand.little_state = 1
+    elif hand.norm_landmarks[18][1] < hand.norm_landmarks[20][1]:
+        hand.little_state = 0
+    else:
+        hand.little_state = -1
+
+    # Gesture
+    if hand.thumb_state == 1 and hand.index_state == 1 and hand.middle_state == 1 and hand.ring_state == 1 and hand.little_state == 1:
+        hand.gesture = "FIVE"
+    elif hand.thumb_state == 0 and hand.index_state == 0 and hand.middle_state == 0 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "FIST"
+    elif hand.thumb_state == 1 and hand.index_state == 0 and hand.middle_state == 0 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "OK" 
+    elif hand.thumb_state == 0 and hand.index_state == 1 and hand.middle_state == 1 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "PEACE"
+    elif hand.thumb_state == 0 and hand.index_state == 1 and hand.middle_state == 0 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "ONE"
+    elif hand.thumb_state == 1 and hand.index_state == 1 and hand.middle_state == 0 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "TWO"
+    elif hand.thumb_state == 1 and hand.index_state == 1 and hand.middle_state == 1 and hand.ring_state == 0 and hand.little_state == 0:
+        hand.gesture = "THREE"
+    elif hand.thumb_state == 0 and hand.index_state == 1 and hand.middle_state == 1 and hand.ring_state == 1 and hand.little_state == 1:
+        hand.gesture = "FOUR"
+    else:
+        hand.gesture = None
+
+
 # Movenet
 
 class Body:
@@ -464,6 +544,15 @@ class Body:
     def print(self):
         attrs = vars(self)
         print('\n'.join("%s: %s" % item for item in attrs.items()))
+
+    def distance_to_wrist(self, hand, wrist_handedness, pad_w=0, pad_h=0):
+        """
+        Calculate the distance between a hand (class Hand) wrist position 
+        and one of the body wrist given by wrist_handedness (= "left" or "right")
+        If the hand.landmarks cooordinates are exprexxed in the padded image, we must substract the padding (given by pad_w and pad_w)
+        to be coherent with the body keypoint coordinates which are expressed in the source image.
+        """
+        return distance(hand.landmarks[0]-np.array([pad_w, pad_h]), self.keypoints[BODY_KP[wrist_handedness+'_wrist']])
 
 CropRegion = namedtuple('CropRegion',['xmin', 'ymin', 'xmax',  'ymax', 'size']) # All values are in pixel. The region is a square of size 'size' pixels
 

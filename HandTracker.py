@@ -11,7 +11,8 @@ import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
-LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
+LANDMARK_MODEL_FULL = str(SCRIPT_DIR / "models/hand_landmark_full_sh4.blob")
+LANDMARK_MODEL_LITE = str(SCRIPT_DIR / "models/hand_landmark_lite_sh4.blob")
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return cv2.resize(arr, shape).transpose(2,0,1)#.flatten()
@@ -25,12 +26,13 @@ class HandTracker:
                     - "rgb_laconic": same as "rgb" but without sending the frames to the host (Edge mode only),
                     - a file path of an image or a video,
                     - an integer (eg 0) for a webcam id,
-    - pd_model: palm detection model blob file (if None, takes the default value PALM_DETECTION_MODEL),
+    - pd_model: palm detection model blob file,
     - pd_nms_thresh: NMS threshold,
     - pd_score: confidence score to determine whether a detection is reliable (a float between 0 and 1).
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
-    - lm_model: landmark model blob file
-                    - None : the default blob file LANDMARK_MODEL,
+    - lm_model: landmark model. Either:
+                    - 'full' for LANDMARK_MODEL_FULL,
+                    - 'lite' for LANDMARK_MODEL_LITE
                     - a path of a blob file. 
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
@@ -42,14 +44,25 @@ class HandTracker:
                     The width is calculated accordingly to height and depends on value of 'crop'
     - use_gesture : boolean, when True, recognize hand poses froma predefined set of poses
                     (ONE, TWO, THREE, FOUR, FIVE, OK, PEACE, FIST)
+    - use_handedness_average : boolean, when True the handedness is the average of the last collected handednesses.
+                    This brings robustness since the inferred robustness is not reliable on ambiguous hand poses.
+                    When False, handedness is the last inferred handedness.
+    - single_hand_tolerance_thresh (Duo mode only) : In Duo mode, if there is only one hand in a frame, 
+                    in order to know when a second hand will appear you need to run the palm detection 
+                    in the following frames. Because palm detection is slow, you may want to delay 
+                    the next time you will run it. 'single_hand_tolerance_thresh' is the number of 
+                    frames during only one hand is detected before palm detection is run again. 
+    - lm_nb_threads : 1 or 2 (default=1), number of inference threads for the landmark model
+                    Currently, don't use 2 because of inference result corruption bug in depthai
     - stats : boolean, when True, display some statistics when exiting.   
     - trace: boolean, when True print some debug messages or show some intermediary step images   
+    
     """
     def __init__(self, input_src=None,
                 pd_model=PALM_DETECTION_MODEL, 
                 pd_score_thresh=0.5, pd_nms_thresh=0.3,
                 use_lm=True,
-                lm_model=LANDMARK_MODEL,
+                lm_model=LANDMARK_MODEL_LITE,
                 lm_score_thresh=0.5,
                 solo=False,
                 xyz=False,
@@ -58,14 +71,22 @@ class HandTracker:
                 resolution="full",
                 internal_frame_height=640,
                 use_gesture=False,
+                use_handedness_average=True,
+                single_hand_tolerance_thresh=10,
+                lm_nb_threads=1,
                 stats=False,
-                trace=False
+                trace=False, 
                 ):
 
         self.pd_model = pd_model
         print(f"Palm detection blob : {self.pd_model}")
         if use_lm:
-            self.lm_model = lm_model
+            if lm_model == "full":
+                self.lm_model = LANDMARK_MODEL_FULL
+            elif lm_model == "lite":
+                self.lm_model = LANDMARK_MODEL_LITE
+            else:
+                self.lm_model = lm_model
             print(f"Landmark blob       : {self.lm_model}")
         self.pd_score_thresh = pd_score_thresh
         self.pd_nms_thresh = pd_nms_thresh
@@ -76,12 +97,21 @@ class HandTracker:
             self.solo = False
         else:
             self.solo = solo
+        if self.solo:
+            print("In Solo mode, # of landmark model threads is forced to 1")
+            self.lm_nb_threads = 1
+        else:
+            assert lm_nb_threads in [1, 2]
+            self.lm_nb_threads = lm_nb_threads
+        self.max_hands = 1 if self.solo else 2
         self.xyz = False
         self.crop = crop 
         self.internal_fps = internal_fps     
         self.stats = stats
         self.trace = trace
         self.use_gesture = use_gesture
+        self.use_handedness_average = use_handedness_average
+        self.single_hand_tolerance_thresh = single_hand_tolerance_thresh
 
         self.device = dai.Device()
 
@@ -193,17 +223,26 @@ class HandTracker:
 
         self.fps = FPS()
 
-        self.nb_pd_inferences = 0
+        self.nb_frames_pd_inference = 0
+        self.nb_frames_lm_inference = 0
         self.nb_lm_inferences = 0
+        self.nb_failed_lm_inferences = 0
+        self.nb_frames_lm_inference_after_landmarks_ROI = 0
+        self.nb_frames_no_hand = 0
         self.nb_spatial_requests = 0
         self.glob_pd_rtrip_time = 0
         self.glob_lm_rtrip_time = 0
         self.glob_spatial_rtrip_time = 0
 
         self.use_previous_landmarks = False
+        self.nb_hands_in_previous_frame = 0
+        if not self.solo: self.single_hand_count = 0
 
-        self.hand_from_landmarks = None
-        self.duo_hands_from_landmarks = {"left": None, "right": None}
+        if use_handedness_average:
+            # handedness_avg: for more robustness, instead of using the last inferred handedness, we prefer to use the average 
+            # of the inferred handedness since use_previous_landmarks is True.
+            self.handedness_avg = [mpu.HandednessAverage() for i in range(self.max_hands)]
+        
 
     def create_pipeline(self):
         print("Creating pipeline...")
@@ -299,11 +338,9 @@ class HandTracker:
         print("Creating Palm Detection Neural Network...")
         pd_nn = pipeline.createNeuralNetwork()
         pd_nn.setBlobPath(self.pd_model)
-        # Increase threads for detection
-        # pd_nn.setNumInferenceThreads(2)
-        # Specify that network takes latest arriving frame in non-blocking manner
         # Palm detection input        
         if self.input_type == "rgb":
+            # Specify that network takes latest arriving frame in non-blocking manner
             pd_nn.input.setQueueSize(1)
             pd_nn.input.setBlocking(False)
             if self.crop:
@@ -322,10 +359,10 @@ class HandTracker:
         
          # Define hand landmark model
         if self.use_lm:
-            print("Creating Hand Landmark Neural Network...")          
+            print(f"Creating Hand Landmark Neural Network ({'1 thread' if self.lm_nb_threads == 1 else '2 threads'})...")         
             lm_nn = pipeline.createNeuralNetwork()
             lm_nn.setBlobPath(self.lm_model)
-            lm_nn.setNumInferenceThreads(2)
+            lm_nn.setNumInferenceThreads(self.lm_nb_threads)
             # Hand landmark input
             self.lm_input_length = 224
             lm_in = pipeline.createXLinkIn()
@@ -347,7 +384,7 @@ class HandTracker:
         self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, best_only=self.solo)
         # Non maximum suppression (not needed if solo)
         if not self.solo:
-            self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)
+            self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)[:self.max_hands]
         if self.use_lm:
             mpu.detections_to_rect(self.hands)
             mpu.rect_transformation(self.hands, self.frame_size, self.frame_size)
@@ -370,70 +407,7 @@ class HandTracker:
             # lm_z = hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4
             hand.landmarks = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int)
 
-            if self.use_gesture: self.recognize_gesture(hand)
-
-    def recognize_gesture(self, r):           
-
-        # Finger states
-        # state: -1=unknown, 0=close, 1=open
-        d_3_5 = mpu.distance(r.norm_landmarks[3], r.norm_landmarks[5])
-        d_2_3 = mpu.distance(r.norm_landmarks[2], r.norm_landmarks[3])
-        angle0 = mpu.angle(r.norm_landmarks[0], r.norm_landmarks[1], r.norm_landmarks[2])
-        angle1 = mpu.angle(r.norm_landmarks[1], r.norm_landmarks[2], r.norm_landmarks[3])
-        angle2 = mpu.angle(r.norm_landmarks[2], r.norm_landmarks[3], r.norm_landmarks[4])
-        r.thumb_angle = angle0+angle1+angle2
-        if angle0+angle1+angle2 > 460 and d_3_5 / d_2_3 > 1.2: 
-            r.thumb_state = 1
-        else:
-            r.thumb_state = 0
-
-        if r.norm_landmarks[8][1] < r.norm_landmarks[7][1] < r.norm_landmarks[6][1]:
-            r.index_state = 1
-        elif r.norm_landmarks[6][1] < r.norm_landmarks[8][1]:
-            r.index_state = 0
-        else:
-            r.index_state = -1
-
-        if r.norm_landmarks[12][1] < r.norm_landmarks[11][1] < r.norm_landmarks[10][1]:
-            r.middle_state = 1
-        elif r.norm_landmarks[10][1] < r.norm_landmarks[12][1]:
-            r.middle_state = 0
-        else:
-            r.middle_state = -1
-
-        if r.norm_landmarks[16][1] < r.norm_landmarks[15][1] < r.norm_landmarks[14][1]:
-            r.ring_state = 1
-        elif r.norm_landmarks[14][1] < r.norm_landmarks[16][1]:
-            r.ring_state = 0
-        else:
-            r.ring_state = -1
-
-        if r.norm_landmarks[20][1] < r.norm_landmarks[19][1] < r.norm_landmarks[18][1]:
-            r.little_state = 1
-        elif r.norm_landmarks[18][1] < r.norm_landmarks[20][1]:
-            r.little_state = 0
-        else:
-            r.little_state = -1
-
-        # Gesture
-        if r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
-            r.gesture = "FIVE"
-        elif r.thumb_state == 0 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "FIST"
-        elif r.thumb_state == 1 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "OK" 
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "PEACE"
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "ONE"
-        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "TWO"
-        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "THREE"
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
-            r.gesture = "FOUR"
-        else:
-            r.gesture = None
+            if self.use_gesture: mpu.recognize_gesture(hand)
             
     def spatial_loc_roi_from_palm_center(self, hand):
         half_size = int(hand.pd_box[2] * self.frame_size / 2)
@@ -527,60 +501,70 @@ class HandTracker:
             if self.input_type != "rgb": 
                 self.glob_pd_rtrip_time += now() - pd_rtrip_time
             self.pd_postprocess(inference)
-            self.nb_pd_inferences += 1  
+            self.nb_frames_pd_inference += 1  
             bag["pd_inference"] = 1 
         else:
-            if self.solo:
-                self.hands = [self.hand_from_landmarks]
-            else:
-                self.hands = [self.duo_hands_from_landmarks["right"], self.duo_hands_from_landmarks["left"]]
+            self.hands = self.hands_from_landmarks
 
-        # Hand landmarks, send requests
+        if len(self.hands) == 0: self.nb_frames_no_hand += 1
+        
         if self.use_lm:
+            nb_lm_inferences = len(self.hands)
+            # Hand landmarks, send requests
             for i,h in enumerate(self.hands):
                 img_hand = mpu.warp_rect_img(h.rect_points, square_frame, self.lm_input_length, self.lm_input_length)
                 nn_data = dai.NNData()   
                 nn_data.setLayer("input_1", to_planar(img_hand, (self.lm_input_length, self.lm_input_length)))
                 self.q_lm_in.send(nn_data)
                 if i == 0: lm_rtrip_time = now() # We measure only for the first hand
+            # Get inference results
             for i,h in enumerate(self.hands):
                 inference = self.q_lm_out.get()
                 if i == 0: self.glob_lm_rtrip_time += now() - lm_rtrip_time
                 self.lm_postprocess(h, inference)
-                self.nb_lm_inferences += 1
             bag["lm_inference"] = len(self.hands)
-            temp_hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
-            if len(temp_hands) > 0:
-                # Making sure only one left hand one right hand is return everytime
-                self.hands = [temp_hands[0]]
-                for hand in temp_hands[1:]:
-                    if abs(hand.handedness - self.hands[0].handedness) > 0.4:
-                        self.hands.append(hand)
-            else:
-                self.hands = []
+            self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
 
             if self.xyz:
                 self.query_xyz(self.spatial_loc_roi_from_wrist_landmark)
 
-            if self.solo:
-                if len(self.hands) == 1:
-                    # hand_from_landmarks will be used to initialize the bounding rotated rectangle (ROI) in the next frame
-                    self.hand_from_landmarks = mpu.hand_landmarks_to_rect(self.hands[0])
-                    self.use_previous_landmarks = True
+            self.hands_from_landmarks = [mpu.hand_landmarks_to_rect(h) for h in self.hands]
+            
+            nb_hands = len(self.hands)
+
+            if self.use_handedness_average:
+                if self.nb_hands_in_previous_frame != nb_hands:
+                    for i in range(nb_hands):
+                        self.handedness_avg[i].reset()
+                for i in range(nb_hands):
+                    self.hands[i].handedness = self.handedness_avg[i].update(self.hands[i].handedness)
+
+            # In duo mode , make sure only one left hand and one right hand max is returned everytime
+            if not self.solo and nb_hands == 2 and (self.hands[0].handedness - 0.5) * (self.hands[1].handedness - 0.5) > 0:
+                self.hands = [self.hands[0]] # We keep the hand with best score
+                nb_hands = 1
+
+            if not self.solo:
+                if nb_hands == 1:
+                    self.single_hand_count += 1
                 else:
-                    self.use_previous_landmarks = False
-            else:
-                if len(self.hands) == 2:
-                    if self.hands[0].handedness >= 0.5:
-                        self.duo_hands_from_landmarks['right'] = mpu.hand_landmarks_to_rect(self.hands[0])
-                        self.duo_hands_from_landmarks['left'] = mpu.hand_landmarks_to_rect(self.hands[1])
-                    else:
-                        self.duo_hands_from_landmarks['right'] = mpu.hand_landmarks_to_rect(self.hands[1])
-                        self.duo_hands_from_landmarks['left'] = mpu.hand_landmarks_to_rect(self.hands[0])
-                    self.use_previous_landmarks = True
-                else:
-                    self.duo_hands_from_landmarks = {"left": None, "right": None}
-                    self.use_previous_landmarks = False
+                    self.single_hand_count = 0
+
+            # Stats
+            if nb_lm_inferences: self.nb_frames_lm_inference += 1
+            self.nb_lm_inferences += nb_lm_inferences
+            self.nb_failed_lm_inferences += nb_lm_inferences - nb_hands 
+            if self.use_previous_landmarks: self.nb_frames_lm_inference_after_landmarks_ROI += 1
+
+            self.use_previous_landmarks = True
+            if nb_hands == 0:
+                self.use_previous_landmarks = False
+            elif not self.solo and nb_hands == 1:
+                    if self.single_hand_count >= self.single_hand_tolerance_thresh:
+                        self.use_previous_landmarks = False
+                        self.single_hand_count = 0
+            
+            self.nb_hands_in_previous_frame = nb_hands           
             
             for hand in self.hands:
                 # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
@@ -607,11 +591,17 @@ class HandTracker:
         self.device.close()
         # Print some stats
         if self.stats:
-            print(f"FPS : {self.fps.get_global():.1f} f/s (# frames = {self.fps.nb_frames()})")
-            print(f"# palm detection inferences received       : {self.nb_pd_inferences}")
-            if self.use_lm: print(f"# hand landmark inferences received        : {self.nb_lm_inferences}")
+            nb_frames = self.fps.nb_frames()
+            print(f"FPS : {self.fps.get_global():.1f} f/s (# frames = {nb_frames})")
+            print(f"# frames w/ no hand           : {self.nb_frames_no_hand} ({100*self.nb_frames_no_hand/nb_frames:.1f}%)")
+            print(f"# frames w/ palm detection    : {self.nb_frames_pd_inference} ({100*self.nb_frames_pd_inference/nb_frames:.1f}%)")
+            if self.use_lm:
+                print(f"# frames w/ landmark inference : {self.nb_frames_lm_inference} ({100*self.nb_frames_lm_inference/nb_frames:.1f}%)- # after palm detection: {self.nb_frames_lm_inference - self.nb_frames_lm_inference_after_landmarks_ROI} - # after landmarks ROI prediction: {self.nb_frames_lm_inference_after_landmarks_ROI}")
+                if not self.solo:
+                    print(f"On frames with at least one landmark inference, average number of landmarks inferences/frame: {self.nb_lm_inferences/self.nb_frames_lm_inference:.2f}")
+                print(f"# lm inferences: {self.nb_lm_inferences} - # failed lm inferences: {self.nb_failed_lm_inferences} ({100*self.nb_failed_lm_inferences/self.nb_lm_inferences:.1f}%)")
             if self.input_type != "rgb":
-                print(f"Palm detection round trip            : {self.glob_pd_rtrip_time/self.nb_pd_inferences*1000:.1f} ms")
+                print(f"Palm detection round trip            : {self.glob_pd_rtrip_time/self.nb_frames_pd_inference*1000:.1f} ms")
                 if self.use_lm and self.nb_lm_inferences:
                     print(f"Hand landmark round trip             : {self.glob_lm_rtrip_time/self.nb_lm_inferences*1000:.1f} ms")
             if self.xyz:

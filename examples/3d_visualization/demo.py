@@ -28,22 +28,26 @@ class HandTracker3DRenderer:
         self.filter = None
         if self.smoothing:
             if tracker.solo:
-                self.filter = LandmarksSmoothingFilter(
-                    # frequency=tracker.video_fps,
+                self.filter = [LandmarksSmoothingFilter(
                     min_cutoff=0.01,
                     beta=40,
                     derivate_cutoff=1
-                )
+                )]
             else:
-                self.smoothing = False
+                self.filter = [
+                    LandmarksSmoothingFilter(min_cutoff=0.01,beta=40,derivate_cutoff=1),
+                    LandmarksSmoothingFilter(min_cutoff=0.01,beta=40,derivate_cutoff=1)
+                    ]
 
-    def draw_hand(self, hand):
+        self.nb_hands_in_previous_frame = 0
+
+    def draw_hand(self, hand, i):
         # Denormalize z-component of 'norm_landmarks'
         lm_z = (hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4).astype(np.int)
         # ... and concatenates with x and y components of 'landmarks'
         points = np.hstack((hand.landmarks, lm_z))
         if self.smoothing:
-            points = self.filter.apply(points, object_scale=hand.rect_w_a)
+            points = self.filter[i].apply(points, object_scale=hand.rect_w_a)
 
         radius = hand.rect_w_a / 30 # Thickness of segments depends on the hand size
         for i,a_b in enumerate(LINES_HAND):
@@ -51,18 +55,19 @@ class HandTracker3DRenderer:
             self.vis3d.add_segment(points[a], points[b], radius=radius, color=[1*(1-hand.handedness),hand.handedness,0]) # if hand.handedness<0.5 else [0,1,0])
                     
     def draw(self, hands):
-        if self.smoothing and not hands:
-            self.filter.reset()
+        if self.smoothing and len(hands) != self.nb_hands_in_previous_frame:
+            for f in self.filter: f.reset()
         self.vis3d.clear()
         self.vis3d.try_move()
         self.vis3d.add_geometries()
-        for hand in hands:
-            self.draw_hand(hand)
+        for i, hand in enumerate(hands):
+            self.draw_hand(hand, i)
         self.vis3d.render()
+        self.nb_hands_in_previous_frame = len(hands)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-e', '--edge', action="store_true",
-                    help="Use Edge mode (postprocessing runs on the device)")
+# parser.add_argument('-e', '--edge', action="store_true",
+#                     help="Use Edge mode (postprocessing runs on the device)")
 parser_tracker = parser.add_argument_group("Tracker arguments")
 parser_tracker.add_argument('-i', '--input', type=str, 
                     help="Path to video or image file to use as input (if not specified, use OAK color camera)")
@@ -77,9 +82,12 @@ parser_tracker.add_argument('--no_smoothing', action="store_true",
 parser_tracker.add_argument('-f', '--internal_fps', type=int, 
                     help="Fps of internal color camera. Too high value lower NN fps (default= depends on the model)")                    
 parser_tracker.add_argument('--internal_frame_height', type=int,                                                                                 
-                    help="Internal color camera frame height in pixels")                    
+                    help="Internal color camera frame height in pixels")    
+parser_tracker.add_argument('--single_hand_tolerance_thresh', type=int, default=30,
+                    help="(Duo mode only) Number of frames after only one hand is detected before calling palm detection (default=%(default)s)")                
 args = parser.parse_args()
 
+args.edge = True
 if args.edge:
     from HandTrackerEdge import HandTracker
 else:
@@ -92,6 +100,8 @@ tracker = HandTracker(
         input_src=args.input, 
         solo=args.solo,
         stats=True,
+        single_hand_tolerance_thresh=args.single_hand_tolerance_thresh,
+        lm_nb_threads=1,
         **tracker_args
         )
 

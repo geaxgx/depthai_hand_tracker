@@ -3,8 +3,8 @@
 usage ()
 {
 	echo "Generate a new blob with a specified number of shaves and cmx (nb cmx = nb shaves)"
-	echo "Usage: ${0} -m model -n nb_shaves"
-	echo "model = 'pd' for palm detection model or 'lm' for hand landmark model"
+	echo "Usage: ${0} -m model_xml -n nb_shaves"
+	echo "model_xml = xml file. e.g. palm_detection.xml or hand_landmark_full.xml"
 	echo "nb_shaves must be between 1 and 13"
 }
 
@@ -15,7 +15,7 @@ while getopts ":hm:n:" opt; do
 			exit 0
 			;;
 		m )
-			model=$OPTARG
+			model_xml=$OPTARG
 			;;
 		n )
 			nb_shaves=$OPTARG
@@ -32,30 +32,19 @@ while getopts ":hm:n:" opt; do
 			;;
 	esac
 done
-if [ -z "$model" ]
+if [ -z "$model_xml" ]
 then
 	echo "Model not specified !"
 	usage
 	exit 1
 fi
-if [ $model == "pd" ]
-then
-	model="palm_detection"
-elif [ $model == "lm" ]
-then
-	model="hand_landmark"
-else
-	echo "Invalid model !"
-	usage
-	exit 1
-fi
-model_xml="${model}.xml"
 if [ ! -f $model_xml ]
 then
 	echo "The model ${model_xml} does not exist"
 	echo "Have you run convert_models.sh ?"
 	exit 1
 fi
+model=$(basename $model_xml .xml)
 if [ -z "$nb_shaves" ]
 then
 	echo "The number of shaves must be specified with -n"
@@ -73,9 +62,6 @@ model_blob="${model}_sh${nb_shaves}.blob"
 	
 echo Model: $model_xml $model_blob
 echo Shaves $nb_shaves
-
-source /opt/intel/openvino_2021/bin/setupvars.sh
-
 
 /opt/intel/openvino_2021/deployment_tools/inference_engine/lib/intel64/myriad_compile -m $model_xml -ip u8 -VPU_NUMBER_OF_SHAVES $nb_shaves -VPU_NUMBER_OF_CMX_SLICES $nb_shaves -o $model_blob
 

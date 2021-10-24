@@ -5,25 +5,33 @@ Here, pseudo-3D means that the 3d information is inferred by the landmark model 
 For one hand, the z-component of its landmarks are relative to the wrist landmark. But we can't know the relative z positions of two wrist landmarks (from different hands).
 Notice that in practice, wrist landmarks are all drawn on the same vertical plane. So if a hand seems closer than the other one, it is just because the former is drawn bigger !
 
-Moreover, in solo mode (when we want to track only one hand at most), filtering is applied to the landmarks to reduce jittering.
-To use solo mode: `./demo.py -s` or `./demo.py -e` (edge mode)
+Moreover, by default, filtering is applied to the landmarks to reduce jittering.
+Note that in Duo mode (default mode, where 2 hands can be detected), when the frames contain only one hand, you can notice like periodic bumps in the dran hand. The bumps happen on the frames where the palm detection is run to check the appearance of a second hand (the number of frames between call to the palm detection can be set with the `single_hand_tolerance_thresh` parameter). 
+
 
 The color depends on the handedness (green for right hand, red for left hand and in between when uncertain).
 
+Tested on Ubuntu with NVidia GPU (without GPU, open3d runs very slowly).
 
 ![3D visualization](medias/3d_visualization.gif)
+
+## Install
+To install Open3d:
+```
+pip install open3d
+```
 
 ## Usage
 
 ```
 -> ./demo.py -h
-usage: demo.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL]
-               [--lm_model LM_MODEL] [-s] [--no_smoothing] [-f INTERNAL_FPS]
+usage: demo.py [-h] [-i INPUT] [--pd_model PD_MODEL] [--lm_model LM_MODEL]
+               [-s] [--no_smoothing] [-f INTERNAL_FPS]
                [--internal_frame_height INTERNAL_FRAME_HEIGHT]
+               [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -e, --edge            Use Edge mode (postprocessing runs on the device)
 
 Tracker arguments:
   -i INPUT, --input INPUT
@@ -39,6 +47,9 @@ Tracker arguments:
                         fps (default= depends on the model)
   --internal_frame_height INTERNAL_FRAME_HEIGHT
                         Internal color camera frame height in pixels
+  --single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH
+                        (Duo mode only) Number of frames after only one hand
+                        is detected before calling palm detection (default=30)
 ```
 
 

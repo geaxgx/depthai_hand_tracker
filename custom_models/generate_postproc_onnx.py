@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torchvision.ops import nms
 import numpy as np
-from itertools import product
 import onnx
 import sys, os
 sys.path.insert(1, os.path.realpath(os.path.pardir))
@@ -13,6 +12,7 @@ import argparse
 detection_input_length = 128
 iou_threshold = 0.3
     
+# In the comments below, N=896
 
 class PDPostProcessing(nn.Module):
     def __init__(self, anchors, top_k):
@@ -30,8 +30,6 @@ class PDPostProcessing(nn.Module):
         dets = torch.squeeze(y, 0) # [N, 18]
         # [N, 18] = [N, 18] + [N, 2] * [2, 18]
         dets = dets/detection_input_length + torch.mm(self.anchors, self.plus_anchor_center)
-        print("dets ty", dets.dtype)
-
 
         # dets : the 4 first elements describe the square bounding box around the head (cx, cy, w, h)
         # cx,cy,w,h -> x1,y1,x2,y2 with:
@@ -63,14 +61,10 @@ class PDPostProcessing(nn.Module):
         # sqn_rr_center_xy = kp0
         # sqn_scale_xy = kp2
 
-       
-
         # We return (scores, cx, cy, w, kp0, kp2) (shape: [top_k, 8]) (no need of h since w=h)
         scores = torch.unsqueeze(scores[keep_idx], 1)
         cxcyw = dets[:,:3][keep_idx]
        
-
-        # scores = scores.unsqueeze(1)[keep_idx]
         dets = torch.cat((scores, cxcyw, kp0, kp2), dim=1)
         return dets
 
@@ -121,7 +115,6 @@ def patch_nms(model, top_k, score_thresh=None):
     nms_not_found = True
     for node in graph.nodes:
         if node.op == "NonMaxSuppression":
-            # print(vars(node))
             print("NonMaxSuppression found.")
             # Inputs of NonMaxSuppression:
             # 0: boxes
@@ -144,21 +137,14 @@ def patch_nms(model, top_k, score_thresh=None):
             mobpc_input._values.tensor.raw_data = mobpc
             print(f"max_out_boxes_per_class value changed to {top_k}")
             nms_not_found = False
-            # if score_thresh is not None:
-            #     score_threshold_input = gs.Constant("_score_thresh", values=np.array(score_thresh, dtype=np.float32))
-            #     node.inputs.append(score_threshold_input)
-            #     print(f"score_threshold={score_thresh} added ")
-            #     # print(vars(node.inputs[4]))
-
             break
     assert nms_not_found==False, "NonMaxSuppression could not be found in the graph !"
     graph.cleanup().toposort()
-    print("NonMaxSuppression has benn patched")
+    print("NonMaxSuppression has been patched")
     return gs.export_onnx(graph)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-top_k', type=int, default=2, help="max number of detections (default=%(default)i)")
-# parser.add_argument('-score_thresh', type=float, help="patch NMS op to use 'score_threshold' with given value")
 parser.add_argument('-no_simp', action="store_true", help="do not run simplifier")
 args = parser.parse_args()
 
@@ -171,7 +157,8 @@ print(f"Nb anchors: {anchors.shape}", anchors.dtype) # [N, 4]
 
 test(anchors, top_k)
 
-raw_onnx_name = f"PDPostProcessing_top{top_k}_raw.onnx"
+name = f"PDPostProcessing_top{top_k}"
+raw_onnx_name = f"{name}_raw.onnx"
 export_onnx(anchors, args.top_k, raw_onnx_name)
 
 model = onnx.load(raw_onnx_name)
@@ -183,7 +170,7 @@ print("Model IR version:", model.ir_version)
 
 
 
-onnx_name = f"PDPostProcessing_top{top_k}.onnx"
+onnx_name = f"{name}.onnx"
 onnx.save(model, onnx_name)
 print(f"Model saved in {onnx_name}")
 

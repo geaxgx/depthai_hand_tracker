@@ -4,22 +4,22 @@ usage ()
 {
         echo "Generate a blob from an ONNX model with a specified number of shaves and cmx (nb cmx = nb shaves)"
         echo
-        echo "Usage: ${0} [-m model] [-n nb_shaves]"
+        echo "Usage: ${0} [-m model_onnx] [-s nb_shaves]"
         echo
-        echo "model: DetectionBestCandidate or other"
-        echo "nb_shaves must be between 1 and 13 (default=1)"
+        echo "model: an existing .onnx file (default=PDPostProcessing_top2.onnx)"
+        echo "nb_shaves: integer between 1 and 13 (default=1)"
 }
 
-while getopts ":hm:n:" opt; do
+while getopts ":hm:s:" opt; do
         case ${opt} in
                 h )
                         usage
                         exit 0
                         ;;
                 m )
-                        model=$OPTARG
+                        model_onnx=$OPTARG
                         ;;
-                n )
+                s )
                         nb_shaves=$OPTARG
                         ;;
                 : )
@@ -35,17 +35,16 @@ while getopts ":hm:n:" opt; do
         esac
 done
 
-if [ -z "$model" ]
+if [ -z "$model_onnx" ]
 then
-       usage
-       exit 1
+       model_onnx=PDPostProcessing_top2.onnx
 fi
 if [ ! -f $model_onnx ]
 then
         echo "The model ${model_onnx} does not exist"
-        echo "Have you run 'python DetectionBestCandidate.py' ?"
         exit 1
 fi
+model=$(basename -s .onnx ${model_onnx})
 
 if [ -z "$nb_shaves" ]
 then
@@ -58,15 +57,12 @@ then
         exit 1
 fi
 
-
-model_onnx="${model}.onnx"
 model_xml="${model}.xml"
 model_blob="${model}_sh${nb_shaves}.blob"
 
 echo Model: $model_xml $model_blob
-echo Shaves $nb_shaves
+echo Shaves: $nb_shaves
 
-ARG=$1
 source /opt/intel/openvino_2021/bin/setupvars.sh
 
 # Use FP16 and make the batch_size explicit.

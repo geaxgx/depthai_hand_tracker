@@ -1,5 +1,5 @@
 # This script has to be run from the docker container started by ./docker_tflite2tensorflow.sh
-source /opt/intel/openvino_2021/bin/setupvars.sh
+# source /opt/intel/openvino_2021/bin/setupvars.sh
 
 replace () { # Replace in file $1 occurences of the string $2 by $3
         sed "s/${2}/${3}/" $1 > tmpf
@@ -29,7 +29,8 @@ convert_model () {
 		--flatc_path ../../flatc \
 		--schema_path ../../schema.fbs \
 		--output_pb \
-    --optimizing_for_openvino_and_myriad
+    	--optimizing_for_openvino_and_myriad \
+        --rigorous_optimization_for_myriad
 	# For generating Openvino "non normalized input" models (the normalization would need to be made explictly in the code):
 	#tflite2tensorflow \
 	#  --model_path ${model_name}.tflite \
@@ -47,7 +48,7 @@ convert_model () {
 		--reverse_input_channels
 	
 	# For Interpolate layers, replace in coordinate_transformation_mode, "half_pixel" by "align_corners"  (bug optimizer)
-	replace ${model_name}.xml half_pixel align_corners
+	# replace ${model_name}.xml half_pixel align_corners
 	
 	/opt/intel/openvino_2021/deployment_tools/inference_engine/lib/intel64/myriad_compile \
 		-m ${model_name}.xml \
@@ -58,4 +59,6 @@ convert_model () {
 }
 
 convert_model palm_detection "[127.5,127.5,127.5]"  "[127.5,127.5,127.5]" "u8"
-convert_model hand_landmark "" "[255.0,255.0,255.0]" "u8"
+convert_model hand_landmark_full "" "[255.0,255.0,255.0]" "u8"
+convert_model hand_landmark_lite "" "[255.0,255.0,255.0]" "u8"
+convert_model hand_landmark_080 "" "[255.0,255.0,255.0]" "u8"

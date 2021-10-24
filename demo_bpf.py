@@ -15,9 +15,9 @@ parser_tracker.add_argument("--pd_model", type=str,
 parser_tracker.add_argument('--no_lm', action="store_true", 
                     help="Only the palm detection model is run (no hand landmark model)")
 parser_tracker.add_argument("--lm_model", type=str,
-                    help="Path to a blob file for landmark model")
+                    help="Landmark model 'full' or 'lite' or path to a blob file")
 parser_tracker.add_argument('-s', '--solo', action="store_true", 
-                    help="Detect one hand max. Default in solo mode.")                    
+                    help="Solo mode: detect one hand max. If not used, detect 2 hands max (Duo mode)")                    
 parser_tracker.add_argument('-xyz', "--xyz", action="store_true", 
                     help="Enable spatial location measure of palm centers")
 parser_tracker.add_argument('-g', '--gesture', action="store_true", 
@@ -30,24 +30,31 @@ parser_tracker.add_argument("-r", "--resolution", choices=['full', 'ultra'], def
                     help="Sensor resolution: 'full' (1920x1080) or 'ultra' (3840x2160) (default=%(default)s)")
 parser_tracker.add_argument('--internal_frame_height', type=int,                                                                                 
                     help="Internal color camera frame height in pixels") 
-parser_tracker.add_argument("-bpf", "--body_pre_focusing", choices=['right', 'left', 'group', 'higher'],
+parser_tracker.add_argument("-bpf", "--body_pre_focusing", default='higher', choices=['right', 'left', 'group', 'higher'],
                     help="Enable Body Pre Focusing")      
 parser_tracker.add_argument('-ah', '--all_hands', action="store_true", 
                     help="In Body Pre Focusing mode, consider all hands (not only the hands up)")                                     
+parser_tracker.add_argument('--single_hand_tolerance_thresh', type=int, default=10,
+                    help="(Duo mode only) Number of frames after only one hand is detected before calling palm detection (default=%(default)s)")
+# parser_tracker.add_argument('--dont_force_same_image', action="store_true",
+#                     help="(Edge Duo mode only) Don't force the use the same image when inferring the landmarks of the 2 hands (slower but skeleton less shifted")
+# parser_tracker.add_argument('-lmt', '--lm_nb_threads', type=int, choices=[1,2], default=2, 
+#                     help="Number of the landmark model inference threads (default=%(default)i)")  
 parser_tracker.add_argument('-t', '--trace', action="store_true", 
                     help="Print some debug messages")                
-parser_renderer = parser.add_argument_group("Renderer arguments")
+parser_renderer = parser.add_argument_group("Renderer arguments") 
 parser_renderer.add_argument('-o', '--output', 
                     help="Path to output video file")
 args = parser.parse_args()
+dargs = vars(args)
+tracker_args = {a:dargs[a] for a in ['pd_model', 'lm_model', 'internal_fps', 'internal_frame_height'] if dargs[a] is not None}
 
 if args.edge:
     from HandTrackerBpfEdge import HandTrackerBpf
+    # tracker_args['use_same_image'] = not args.dont_force_same_image
 else:
     from HandTrackerBpf import HandTrackerBpf
 
-dargs = vars(args)
-tracker_args = {a:dargs[a] for a in ['pd_model', 'lm_model', 'internal_fps', 'internal_frame_height'] if dargs[a] is not None}
 
 tracker = HandTrackerBpf(
         input_src=args.input, 
@@ -59,6 +66,8 @@ tracker = HandTrackerBpf(
         resolution=args.resolution,
         body_pre_focusing=args.body_pre_focusing,
         hands_up_only=not args.all_hands,
+        single_hand_tolerance_thresh=args.single_hand_tolerance_thresh,
+        # lm_nb_threads=args.lm_nb_threads,
         stats=True,
         trace=args.trace,
         **tracker_args

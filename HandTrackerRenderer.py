@@ -25,7 +25,7 @@ class HandTrackerRenderer:
             self.show_pd_box = False
             self.show_pd_kps = False
             self.show_rot_rect = False
-            self.show_handedness = False
+            self.show_handedness = 0
             self.show_landmarks = True
             self.show_scores = False
             self.show_gesture = self.tracker.use_gesture
@@ -66,7 +66,11 @@ class HandTrackerRenderer:
                     cv2.polylines(self.frame, [np.array(hand.rect_points)], True, (0,255,255), 2, cv2.LINE_AA)
                 if self.show_landmarks:
                     lines = [np.array([hand.landmarks[point] for point in line]).astype(np.int) for line in LINES_HAND]
-                    cv2.polylines(self.frame, lines, False, (255, 0, 0), int(1+thick_coef*3), cv2.LINE_AA)
+                    if self.show_handedness == 3:
+                        color = (0,255,0) if hand.handedness > 0.5 else (0,0,255)
+                    else:
+                        color = (255, 0, 0)
+                    cv2.polylines(self.frame, lines, False, color, int(1+thick_coef*3), cv2.LINE_AA)
                     radius = int(1+thick_coef*5)
                     if self.tracker.use_gesture:
                         # color depending on finger state (1=open, 0=close, -1=unknown)
@@ -83,10 +87,16 @@ class HandTrackerRenderer:
                         for i in range(17,21):
                             cv2.circle(self.frame, (hand.landmarks[i][0], hand.landmarks[i][1]), radius, color[hand.little_state], -1)
                     else:
+                        if self.show_handedness == 2:
+                            color = (0,255,0) if hand.handedness > 0.5 else (0,0,255)
+                        elif self.show_handedness == 3:
+                            color = (255, 0, 0)
+                        else: 
+                            color = (0,128,255)
                         for x,y in hand.landmarks[:,:2]:
-                            cv2.circle(self.frame, (int(x), int(y)), radius, (0,128,255), -1)
+                            cv2.circle(self.frame, (int(x), int(y)), radius, color, -1)
 
-                if self.show_handedness:
+                if self.show_handedness == 1:
                     cv2.putText(self.frame, f"{hand.label.upper()} {hand.handedness:.2f}", 
                             (info_ref_x-90, info_ref_y+40), 
                             cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0) if hand.handedness > 0.5 else (0,0,255), 2)
@@ -195,7 +205,7 @@ class HandTrackerRenderer:
         elif key == ord('4') and self.tracker.use_lm:
             self.show_landmarks = not self.show_landmarks
         elif key == ord('5') and self.tracker.use_lm:
-            self.show_handedness = not self.show_handedness
+            self.show_handedness = (self.show_handedness + 1) % 4
         elif key == ord('6'):
             self.show_scores = not self.show_scores
         elif key == ord('7') and self.tracker.use_lm:

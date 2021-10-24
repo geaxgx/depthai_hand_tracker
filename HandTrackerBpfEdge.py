@@ -13,11 +13,13 @@ import marshal
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
-LANDMARK_MODEL = str(SCRIPT_DIR / "models/hand_landmark_sh4.blob")
-DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/DetectionBestCandidate_sh1.blob")
+LANDMARK_MODEL_FULL = str(SCRIPT_DIR / "models/hand_landmark_full_sh4.blob")
+LANDMARK_MODEL_LITE = str(SCRIPT_DIR / "models/hand_landmark_lite_sh4.blob")
+DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/PDPostProcessing_top2_sh1.blob")
 MOVENET_LIGHTNING_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_lightning_U8_transpose.blob")
 MOVENET_THUNDER_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_thunder_U8_transpose.blob")
-TEMPLATE_MANAGER_SCRIPT = str(SCRIPT_DIR / "template_manager_script.py")
+TEMPLATE_MANAGER_SCRIPT_SOLO = str(SCRIPT_DIR / "template_manager_script_bpf_solo.py")
+TEMPLATE_MANAGER_SCRIPT_DUO = str(SCRIPT_DIR / "template_manager_script_bpf_duo.py")
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return cv2.resize(arr, shape).transpose(2,0,1).flatten()
@@ -34,13 +36,14 @@ class HandTrackerBpf:
                     - a file path of an image or a video,
                     - an integer (eg 0) for a webcam id,
                     In edge mode, only "rgb" and "rgb_laconic" are possible
-    - pd_model: palm detection model blob file (if None, takes the default value PALM_DETECTION_MODEL),
+    - pd_model: palm detection model blob file,
     - pd_score: confidence score to determine whether a detection is reliable (a float between 0 and 1).
     - pd_nms_thresh: NMS threshold.
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
-    - lm_model: landmark model blob file
-                    - None : the default blob file LANDMARK_MODEL,
-                    - a path of a blob file. 
+    - lm_model: landmark model. Either:
+                    - 'full' for LANDMARK_MODEL_FULL,
+                    - 'lite' for LANDMARK_MODEL_LITE
+                    - a path of a blob file.
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
     - pp_model: path to the detection post processing model,
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
@@ -53,23 +56,33 @@ class HandTrackerBpf:
                     The width is calculated accordingly to height and depends on value of 'crop'
     - use_gesture : boolean, when True, recognize hand poses froma predefined set of poses
                     (ONE, TWO, THREE, FOUR, FIVE, OK, PEACE, FIST)
-    - body_pre_focusing: None or "right" or "left" or "group" or "higher". Body pre focusing is the use
+    - body_pre_focusing: "right" or "left" or "group" or "higher". Body pre focusing is the use
                     of a body pose detector to help to focus on the region of the image that
                     contains one hand ("left" or "right") or "both" hands. 
-                    None = don't use body pre focusing.
+                    If not in solo mode, body_pre_focusing is forced to 'group'
     - body_model : Movenet single pose model: "lightning", "thunder"
     - body_score_thresh : Movenet score thresh
     - hands_up_only: boolean. When using body_pre_focusing, if hands_up_only is True, consider only hands for which the wrist keypoint
                     is above the elbow keypoint.
+    - single_hand_tolerance_thresh (Duo mode only) : In Duo mode, if there is only one hand in a frame, 
+                    in order to know when a second hand will appear you need to run the palm detection 
+                    in the following frames. Because palm detection is slow, you may want to delay 
+                    the next time you will run it. 'single_hand_tolerance_thresh' is the number of 
+                    frames during only one hand is detected before palm detection is run again.
+    - lm_nb_threads : 1 or 2 (default=1), number of inference threads for the landmark model
+                    Currently, don't use 2 because of inference result corruption bug in depthai
+    - use_same_image (Edge Duo mode only) : boolean, when True, use the same image when inferring the landmarks of the 2 hands
+                    (setReusePreviousImage(True) in the ImageManip node before the landmark model). 
+                    When True, the FPS is significantly higher but the skeleton may appear shifted on one of the 2 hands. 
     - stats : boolean, when True, display some statistics when exiting.   
-    - trace: boolean, when True print some debug messages or show output of ImageManip nodes
+    - trace : boolean, when True print some debug messages or show output of ImageManip nodes
                     (used only in Edge mode)   
     """
     def __init__(self, input_src=None,
-                pd_model=None, 
+                pd_model=PALM_DETECTION_MODEL, 
                 pd_score_thresh=0.5, pd_nms_thresh=0.3,
                 use_lm=True,
-                lm_model=None,
+                lm_model=LANDMARK_MODEL_LITE,
                 lm_score_thresh=0.5,
                 pp_model = DETECTION_POSTPROCESSING_MODEL,
                 solo=True,
@@ -79,10 +92,13 @@ class HandTrackerBpf:
                 resolution="full",
                 internal_frame_height=640,
                 use_gesture=False,
-                body_pre_focusing = None,
+                body_pre_focusing = 'higher',
                 body_model = "thunder",
                 body_score_thresh=0.2,
                 hands_up_only=True,
+                single_hand_tolerance_thresh=10,
+                use_same_image=False,
+                lm_nb_threads=1,
                 stats=False,
                 trace=False
                 ):
@@ -91,34 +107,49 @@ class HandTrackerBpf:
         if not use_lm:
             print("use_lm=False is not supported in Edge mode.")
             sys.exit()
-        self.pd_model = pd_model if pd_model else PALM_DETECTION_MODEL
-        print(f"Palm detection blob : {self.pd_model}")
-        self.lm_model = lm_model if lm_model else LANDMARK_MODEL
-        print(f"Landmark blob       : {self.lm_model}")
-        self.body_pre_focusing = body_pre_focusing 
+        self.pd_model = pd_model
+        print(f"Palm detection blob     : {self.pd_model}")
+        if lm_model == "full":
+            self.lm_model = LANDMARK_MODEL_FULL
+        elif lm_model == "lite":
+            self.lm_model = LANDMARK_MODEL_LITE
+        else:
+            self.lm_model = lm_model
+        print(f"Landmark blob           : {self.lm_model}")
+        self.pp_model = pp_model
+        print(f"PD post processing blob : {self.pp_model}")
+        self.solo = solo
+        
         self.body_score_thresh = body_score_thresh
         self.body_input_length = 256
         self.hands_up_only = hands_up_only
-        if self.body_pre_focusing:
-            if body_model == "lightning":
-                self.body_model = MOVENET_LIGHTNING_MODEL
-                self.body_input_length = 192 
-            else:
-                self.body_model = MOVENET_THUNDER_MODEL            
-            print(f"Body pose blob      : {self.body_model}")
+        if body_model == "lightning":
+            self.body_model = MOVENET_LIGHTNING_MODEL
+            self.body_input_length = 192 
+        else:
+            self.body_model = MOVENET_THUNDER_MODEL            
+        print(f"Body pose blob          : {self.body_model}")
+        if self.solo:
+            print("In Solo mode, # of landmark model threads is forced to 1")
+            self.lm_nb_threads = 1
+            self.body_pre_focusing = body_pre_focusing 
+        else:
+            assert lm_nb_threads in [1, 2]
+            self.lm_nb_threads = lm_nb_threads
+            print("In Duo mode, body_pre_focusing is forced to 'group'")
+            self.body_pre_focusing = "group"
         self.pd_score_thresh = pd_score_thresh
-        self.pd_nms_thresh = pd_nms_thresh
+        # self.pd_nms_thresh = pd_nms_thresh # pd_nms_thresh is hard coded in pp_model
         self.lm_score_thresh = lm_score_thresh
-        self.pp_model = pp_model
-        if not solo:
-            print("Warning: non solo mode is not implemented in edge mode. Continuing in solo mode.")
-        self.solo = True
+        
         self.xyz = False
         self.crop = crop 
            
         self.stats = stats
         self.trace = trace
         self.use_gesture = use_gesture
+        self.single_hand_tolerance_thresh = single_hand_tolerance_thresh
+        self.use_same_image = use_same_image
 
         self.device = dai.Device()
 
@@ -145,8 +176,16 @@ class HandTrackerBpf:
                     print("Warning: depth unavailable on this device, 'xyz' argument is ignored")
 
             if internal_fps is None:
-                if self.xyz:
-                    self.internal_fps = 31
+                if lm_model == "full":
+                    if self.xyz:
+                        self.internal_fps = 22 
+                    else:
+                        self.internal_fps = 26 
+                elif lm_model == "lite":
+                    if self.xyz:
+                        self.internal_fps = 29 
+                    else:
+                        self.internal_fps = 36 
                 else:
                     self.internal_fps = 39
             else:
@@ -175,10 +214,9 @@ class HandTrackerBpf:
             print("Invalid input source:", input_src)
             sys.exit()
         
-        if self.body_pre_focusing:
-            # Defines the default crop region (pads the full image from both sides to make it a square image) 
-            # Used when the algorithm cannot reliably determine the crop region from the previous frame.
-            self.crop_region = mpu.CropRegion(-self.pad_w, -self.pad_h,-self.pad_w+self.frame_size, -self.pad_h+self.frame_size, self.frame_size)
+        # Defines the default crop region (pads the full image from both sides to make it a square image) 
+        # Used when the algorithm cannot reliably determine the crop region from the previous frame.
+        self.crop_region = mpu.CropRegion(-self.pad_w, -self.pad_h,-self.pad_w+self.frame_size, -self.pad_h+self.frame_size, self.frame_size)
 
         # Define and start pipeline
         usb_speed = self.device.getUsbSpeed()
@@ -191,21 +229,19 @@ class HandTrackerBpf:
         self.q_manager_out = self.device.getOutputQueue(name="manager_out", maxSize=1, blocking=False)
         # For showing outputs of ImageManip nodes (debugging)
         if self.trace:
-            if self.body_pre_focusing:
-                self.q_pre_body_manip_out = self.device.getOutputQueue(name="pre_body_manip_out", maxSize=1, blocking=False)
+            self.q_pre_body_manip_out = self.device.getOutputQueue(name="pre_body_manip_out", maxSize=1, blocking=False)
             self.q_pre_pd_manip_out = self.device.getOutputQueue(name="pre_pd_manip_out", maxSize=1, blocking=False)
             self.q_pre_lm_manip_out = self.device.getOutputQueue(name="pre_lm_manip_out", maxSize=1, blocking=False)    
 
         self.fps = FPS()
 
-        self.nb_pd_inferences = 0
+        self.nb_frames_body_inference = 0
+        self.nb_frames_pd_inference = 0
+        self.nb_frames_lm_inference = 0
         self.nb_lm_inferences = 0
-        self.nb_lm_inferences_after_landmarks_ROI = 0
+        self.nb_failed_lm_inferences = 0
+        self.nb_frames_lm_inference_after_landmarks_ROI = 0
         self.nb_frames_no_hand = 0
-        self.nb_spatial_requests = 0
-        self.glob_pd_rtrip_time = 0
-        self.glob_lm_rtrip_time = 0
-        self.glob_spatial_rtrip_time = 0
         
 
     def create_pipeline(self):
@@ -283,32 +319,31 @@ class HandTrackerBpf:
             stereo.depth.link(spatial_location_calculator.inputDepth)
 
             manager_script.outputs['spatial_location_config'].link(spatial_location_calculator.inputConfig)
-            spatial_location_calculator.out.link(manager_script.inputs['spatial_data'])
-            
-        if self.body_pre_focusing:
-            # Define body pose detection pre processing: resize preview to (self.body_input_length, self.body_input_length)
-            # and transform BGR to RGB
-            print("Creating Body Pose Detection pre processing image manip...")
-            pre_body_manip = pipeline.create(dai.node.ImageManip)
-            pre_body_manip.setMaxOutputFrameSize(self.body_input_length*self.body_input_length*3)
-            pre_body_manip.setWaitForConfigInput(True)
-            pre_body_manip.inputImage.setQueueSize(1)
-            pre_body_manip.inputImage.setBlocking(False)
-            cam.preview.link(pre_body_manip.inputImage)
-            manager_script.outputs['pre_body_manip_cfg'].link(pre_body_manip.inputConfig)
-            # For debugging
-            if self.trace:
-                pre_body_manip_out = pipeline.createXLinkOut()
-                pre_body_manip_out.setStreamName("pre_body_manip_out")
-                pre_body_manip.out.link(pre_body_manip_out.input)
+            spatial_location_calculator.out.link(manager_script.inputs['spatial_data'])            
 
-            # Define landmark model
-            print("Creating Body Pose Detection Neural Network...")          
-            body_nn = pipeline.create(dai.node.NeuralNetwork)
-            body_nn.setBlobPath(self.body_model)
-            # lm_nn.setNumInferenceThreads(1)
-            pre_body_manip.out.link(body_nn.input)
-            body_nn.out.link(manager_script.inputs['from_body_nn'])
+        # Define body pose detection pre processing: resize preview to (self.body_input_length, self.body_input_length)
+        # and transform BGR to RGB
+        print("Creating Body Pose Detection pre processing image manip...")
+        pre_body_manip = pipeline.create(dai.node.ImageManip)
+        pre_body_manip.setMaxOutputFrameSize(self.body_input_length*self.body_input_length*3)
+        pre_body_manip.setWaitForConfigInput(True)
+        pre_body_manip.inputImage.setQueueSize(1)
+        pre_body_manip.inputImage.setBlocking(False)
+        cam.preview.link(pre_body_manip.inputImage)
+        manager_script.outputs['pre_body_manip_cfg'].link(pre_body_manip.inputConfig)
+        # For debugging
+        if self.trace:
+            pre_body_manip_out = pipeline.createXLinkOut()
+            pre_body_manip_out.setStreamName("pre_body_manip_out")
+            pre_body_manip.out.link(pre_body_manip_out.input)
+
+        # Define landmark model
+        print("Creating Body Pose Detection Neural Network...")          
+        body_nn = pipeline.create(dai.node.NeuralNetwork)
+        body_nn.setBlobPath(self.body_model)
+        # lm_nn.setNumInferenceThreads(1)
+        pre_body_manip.out.link(body_nn.input)
+        body_nn.out.link(manager_script.inputs['from_body_nn'])
 
         # Define palm detection pre processing: resize preview to (self.pd_input_length, self.pd_input_length)
         print("Creating Palm Detection pre processing image manip...")
@@ -330,8 +365,6 @@ class HandTrackerBpf:
         print("Creating Palm Detection Neural Network...")
         pd_nn = pipeline.create(dai.node.NeuralNetwork)
         pd_nn.setBlobPath(self.pd_model)
-        # Increase threads for detection
-        # pd_nn.setNumInferenceThreads(2)
         pre_pd_manip.out.link(pd_nn.input)
 
         # Define pose detection post processing "model"
@@ -347,7 +380,7 @@ class HandTrackerBpf:
         manager_script.outputs['host'].link(manager_out.input)
 
         # Define landmark pre processing image manip
-        print("Creating Landmark pre processing image manip...") 
+        print("Creating Hand Landmark pre processing image manip...") 
         self.lm_input_length = 224
         pre_lm_manip = pipeline.create(dai.node.ImageManip)
         pre_lm_manip.setMaxOutputFrameSize(self.lm_input_length*self.lm_input_length*3)
@@ -365,10 +398,10 @@ class HandTrackerBpf:
         manager_script.outputs['pre_lm_manip_cfg'].link(pre_lm_manip.inputConfig)
 
         # Define landmark model
-        print("Creating Hand Landmark Neural Network...")          
+        print(f"Creating Hand Landmark Neural Network ({'1 thread' if self.lm_nb_threads == 1 else '2 threads'})...")          
         lm_nn = pipeline.create(dai.node.NeuralNetwork)
         lm_nn.setBlobPath(self.lm_model)
-        # lm_nn.setNumInferenceThreads(1)
+        lm_nn.setNumInferenceThreads(self.lm_nb_threads)
         pre_lm_manip.out.link(lm_nn.input)
         lm_nn.out.link(manager_script.inputs['from_lm_nn'])
             
@@ -380,12 +413,12 @@ class HandTrackerBpf:
         The code of the scripting node 'manager_script' depends on :
             - the score threshold,
             - the video frame shape
-        So we build this code from the content of the file template_manager_script.py which is a python template
+        So we build this code from the content of the file template_manager_script_*.py which is a python template
         '''
         # Read the template
-        with open(TEMPLATE_MANAGER_SCRIPT, 'r') as file:
+        with open(TEMPLATE_MANAGER_SCRIPT_SOLO if self.solo else TEMPLATE_MANAGER_SCRIPT_DUO, 'r') as file:
             template = Template(file.read())
-        
+
         # Perform the substitution
         code = template.substitute(
                     _TRACE = "node.warn" if self.trace else "#",
@@ -397,13 +430,12 @@ class HandTrackerBpf:
                     _frame_size = self.frame_size,
                     _crop_w = self.crop_w,
                     _IF_XYZ = "" if self.xyz else '"""',
-                    _buffer_size = 1185 if self.xyz else 1138,
-                    _IF_BPF = "" if self.body_pre_focusing else '"""',
                     _body_pre_focusing = self.body_pre_focusing,
                     _body_score_thresh = self.body_score_thresh,
                     _body_input_length = self.body_input_length,
-                    _first_branch = 0 if self.body_pre_focusing else 1,
-                    _hands_up_only = self.hands_up_only
+                    _hands_up_only = self.hands_up_only,
+                    _single_hand_tolerance_thresh= self.single_hand_tolerance_thresh,
+                    _IF_USE_SAME_IMAGE = "" if self.use_same_image else '"""'
         )
         # Remove comments and empty lines
         import re
@@ -411,75 +443,39 @@ class HandTrackerBpf:
         code = re.sub(r'#.*', '', code)
         code = re.sub('\n\s*\n', '\n', code)
         # For debugging
-        if True: #self.trace:
+        if self.trace:
             with open("tmp_code.py", "w") as file:
                 file.write(code)
 
         return code
 
-    def recognize_gesture(self, r):           
+    def extract_hand_data(self, res, hand_idx):
+        hand = mpu.HandRegion()
+        hand.rect_x_center_a = res["rect_center_x"][hand_idx] * self.frame_size
+        hand.rect_y_center_a = res["rect_center_y"][hand_idx] * self.frame_size
+        hand.rect_w_a = hand.rect_h_a = res["rect_size"][hand_idx] * self.frame_size
+        hand.rotation = res["rotation"][hand_idx] 
+        hand.rect_points = mpu.rotated_rect_to_points(hand.rect_x_center_a, hand.rect_y_center_a, hand.rect_w_a, hand.rect_h_a, hand.rotation)
+        hand.lm_score = res["lm_score"][hand_idx]
+        hand.handedness = res["handedness"][hand_idx]
+        hand.label = "right" if hand.handedness > 0.5 else "left"
+        hand.norm_landmarks = np.array(res['rrn_lms'][hand_idx]).reshape(-1,3)
+        hand.landmarks = (np.array(res["sqn_lms"][hand_idx]) * self.frame_size).reshape(-1,2).astype(np.int)
+        if self.xyz:
+            hand.xyz = res["xyz"][hand_idx]
+            hand.xyz_zone = res["xyz_zone"][hand_idx]
+        # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
+        if self.pad_h > 0:
+            hand.landmarks[:,1] -= self.pad_h
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][1] -= self.pad_h
+        if self.pad_w > 0:
+            hand.landmarks[:,0] -= self.pad_w
+            for i in range(len(hand.rect_points)):
+                hand.rect_points[i][0] -= self.pad_w
+        if self.use_gesture: mpu.recognize_gesture(hand)
 
-        # Finger states
-        # state: -1=unknown, 0=close, 1=open
-        d_3_5 = mpu.distance(r.norm_landmarks[3], r.norm_landmarks[5])
-        d_2_3 = mpu.distance(r.norm_landmarks[2], r.norm_landmarks[3])
-        angle0 = mpu.angle(r.norm_landmarks[0], r.norm_landmarks[1], r.norm_landmarks[2])
-        angle1 = mpu.angle(r.norm_landmarks[1], r.norm_landmarks[2], r.norm_landmarks[3])
-        angle2 = mpu.angle(r.norm_landmarks[2], r.norm_landmarks[3], r.norm_landmarks[4])
-        r.thumb_angle = angle0+angle1+angle2
-        if angle0+angle1+angle2 > 460 and d_3_5 / d_2_3 > 1.2: 
-            r.thumb_state = 1
-        else:
-            r.thumb_state = 0
-
-        if r.norm_landmarks[8][1] < r.norm_landmarks[7][1] < r.norm_landmarks[6][1]:
-            r.index_state = 1
-        elif r.norm_landmarks[6][1] < r.norm_landmarks[8][1]:
-            r.index_state = 0
-        else:
-            r.index_state = -1
-
-        if r.norm_landmarks[12][1] < r.norm_landmarks[11][1] < r.norm_landmarks[10][1]:
-            r.middle_state = 1
-        elif r.norm_landmarks[10][1] < r.norm_landmarks[12][1]:
-            r.middle_state = 0
-        else:
-            r.middle_state = -1
-
-        if r.norm_landmarks[16][1] < r.norm_landmarks[15][1] < r.norm_landmarks[14][1]:
-            r.ring_state = 1
-        elif r.norm_landmarks[14][1] < r.norm_landmarks[16][1]:
-            r.ring_state = 0
-        else:
-            r.ring_state = -1
-
-        if r.norm_landmarks[20][1] < r.norm_landmarks[19][1] < r.norm_landmarks[18][1]:
-            r.little_state = 1
-        elif r.norm_landmarks[18][1] < r.norm_landmarks[20][1]:
-            r.little_state = 0
-        else:
-            r.little_state = -1
-
-        # Gesture
-        if r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
-            r.gesture = "FIVE"
-        elif r.thumb_state == 0 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "FIST"
-        elif r.thumb_state == 1 and r.index_state == 0 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "OK" 
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "PEACE"
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "ONE"
-        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 0 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "TWO"
-        elif r.thumb_state == 1 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 0 and r.little_state == 0:
-            r.gesture = "THREE"
-        elif r.thumb_state == 0 and r.index_state == 1 and r.middle_state == 1 and r.ring_state == 1 and r.little_state == 1:
-            r.gesture = "FOUR"
-        else:
-            r.gesture = None
-            
+        return hand  
 
     def next_frame(self):
 
@@ -493,11 +489,10 @@ class HandTrackerBpf:
 
         # For debugging
         if self.trace:
-            if self.body_pre_focusing:
-                pre_body_manip = self.q_pre_body_manip_out.tryGet()
-                if pre_body_manip:
-                    pre_pd_manip = pre_body_manip.getCvFrame()
-                    cv2.imshow("pre_body_manip", pre_pd_manip)
+            pre_body_manip = self.q_pre_body_manip_out.tryGet()
+            if pre_body_manip:
+                pre_pd_manip = pre_body_manip.getCvFrame()
+                cv2.imshow("pre_body_manip", pre_pd_manip)
             pre_pd_manip = self.q_pre_pd_manip_out.tryGet()
             if pre_pd_manip:
                 pre_pd_manip = pre_pd_manip.getCvFrame()
@@ -509,51 +504,28 @@ class HandTrackerBpf:
 
         # Get result from device
         res = marshal.loads(self.q_manager_out.get().getData())
+        hands = []
+        for i in range(len(res.get("lm_score",[]))):
+            hand = self.extract_hand_data(res, i)
+            hands.append(hand)
 
-        if res["type"] != 0 and res["lm_score"] > self.lm_score_thresh:
-            hand = mpu.HandRegion()
-            hand.rect_x_center_a = res["rect_center_x"] * self.frame_size
-            hand.rect_y_center_a = res["rect_center_y"] * self.frame_size
-            hand.rect_w_a = hand.rect_h_a = res["rect_size"] * self.frame_size
-            hand.rotation = res["rotation"] 
-            hand.rect_points = mpu.rotated_rect_to_points(hand.rect_x_center_a, hand.rect_y_center_a, hand.rect_w_a, hand.rect_h_a, hand.rotation)
-            hand.lm_score = res["lm_score"]
-            hand.handedness = res["handedness"]
-            hand.label = "right" if hand.handedness > 0.5 else "left"
-            # hand.norm_landmarks contains the normalized ([0:1]) 3D coordinates of landmarks in the square rotated body bounding box
-            hand.norm_landmarks = np.array(res['rrn_lms']).reshape(-1,3)
-            # hand.landmarks = the landmarks in the image coordinate system (in pixel)
-            hand.landmarks = (np.array(res["sqn_lms"]) * self.frame_size).reshape(-1,2).astype(np.int)
-            if self.xyz:
-                hand.xyz = res["xyz"]
-                hand.xyz_zone = res["xyz_zone"]
-            # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
-            if self.pad_h > 0:
-                hand.landmarks[:,1] -= self.pad_h
-                for i in range(len(hand.rect_points)):
-                    hand.rect_points[i][1] -= self.pad_h
-            if self.pad_w > 0:
-                hand.landmarks[:,0] -= self.pad_w
-                for i in range(len(hand.rect_points)):
-                    hand.rect_points[i][0] -= self.pad_w
-            if self.use_gesture: self.recognize_gesture(hand)
-            hands = [hand]
 
-        else:
-            hands = []
-        
         # Statistics
         if self.stats:
-            if res["type"] == 0:
-                self.nb_pd_inferences += 1
+            if res["bd_pd_inf"] == 1:
+                self.nb_frames_body_inference += 1
+            elif res["bd_pd_inf"] == 2:
+                self.nb_frames_body_inference += 1
+                self.nb_frames_pd_inference += 1
+            else:
+                if res["nb_lm_inf"] > 0:
+                     self.nb_frames_lm_inference_after_landmarks_ROI += 1
+            if res["nb_lm_inf"] == 0:
                 self.nb_frames_no_hand += 1
-            else:  
-                self.nb_lm_inferences += 1
-                if res["type"] == 1:
-                    self.nb_pd_inferences += 1
-                else: # res["type"] == 2
-                    self.nb_lm_inferences_after_landmarks_ROI += 1
-                if res["lm_score"] < self.lm_score_thresh: self.nb_frames_no_hand += 1
+            else:
+                self.nb_frames_lm_inference += 1
+                self.nb_lm_inferences += res["nb_lm_inf"]
+                self.nb_failed_lm_inferences += res["nb_lm_inf"] - len(hands)
 
         return video_frame, hands, None
 
@@ -562,8 +534,13 @@ class HandTrackerBpf:
         self.device.close()
         # Print some stats
         if self.stats:
-            print(f"FPS : {self.fps.get_global():.1f} f/s (# frames = {self.fps.nb_frames()})")
-            print(f"# frames without hand       : {self.nb_frames_no_hand}")
-            print(f"# pose detection inferences : {self.nb_pd_inferences}")
-            print(f"# landmark inferences       : {self.nb_lm_inferences} - # after pose detection: {self.nb_lm_inferences - self.nb_lm_inferences_after_landmarks_ROI} - # after landmarks ROI prediction: {self.nb_lm_inferences_after_landmarks_ROI}")
-        
+            nb_frames = self.fps.nb_frames()
+            print(f"FPS : {self.fps.get_global():.1f} f/s (# frames = {nb_frames})")
+            print(f"# frames w/ no hand           : {self.nb_frames_no_hand} ({100*self.nb_frames_no_hand/nb_frames:.1f}%)")
+            print(f"# frames w/ body detection    : {self.nb_frames_body_inference} ({100*self.nb_frames_body_inference/nb_frames:.1f}%)")
+            print(f"# frames w/ palm detection    : {self.nb_frames_pd_inference} ({100*self.nb_frames_pd_inference/nb_frames:.1f}%)")
+            print(f"# frames w/ landmark inference : {self.nb_frames_lm_inference} ({100*self.nb_frames_lm_inference/nb_frames:.1f}%)- # after palm detection: {self.nb_frames_lm_inference - self.nb_frames_lm_inference_after_landmarks_ROI} - # after landmarks ROI prediction: {self.nb_frames_lm_inference_after_landmarks_ROI}")
+            if not self.solo:
+                print(f"On frames with at least one landmark inference, average number of landmarks inferences/frame: {self.nb_lm_inferences/self.nb_frames_lm_inference:.2f}")
+            if self.nb_lm_inferences:
+                print(f"# lm inferences: {self.nb_lm_inferences} - # failed lm inferences: {self.nb_failed_lm_inferences} ({100*self.nb_failed_lm_inferences/self.nb_lm_inferences:.1f}%)")
