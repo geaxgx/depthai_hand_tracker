@@ -24,9 +24,11 @@ Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.
 ## What's new ?
 * 24/10/2021:
   * **Duo mode** replaces Multimode: Duo mode means "fast 2 hands tracking" (fast because calculated ROIs from landmarks of the previous frame are used whenever possible). With older Multimode, there was no limit on the number of hands but no smart tracking either, the slow palm detection was called on every frame. Solo mode is still available and is still the preferred mode if your application does not need 2 hands detection.
+  
+    *Note: currently, a bug that corrupts the output of the landmark model when using 2 threads prevents us to run the Duo mode at optimal speed. Until a solution is found by Luxonis and Intel, please keep `lm_nb_threads` to 1.* 
   * **Robust handedness:** when using Body Pre Focusing, the handedness is given by the wrist keypoint from the body detection (handedness inferred by the landmark model is used only if body information is not reliable). When not using Body Pre Focusing, the handedness is the average of the previous inferred handednesses since the hand is tracked, which brings robustness (this is the recommended behaviour but the user has still the option to use only the last inferred handedness as before via the `use_handedness_average` flag). 
   *  **Two versions of code (with and without Body Pre Focusing):** because the implementation of Body Pre Focusing made the code lenghtier and more complex, I decided to make 2 versions of the scripts and of the classes. This way, it should be easier for users that don't need BPF to appropriate and adapt the code to their own need. So now, we have: demo.py vs demo_bpf.py, class HandTracker vs class HandTrackerBpf, HandTrackerEdge vs HandTrackerBpfEdge, and so on.
-  *  **New Mediapipe Landmark models (released 18/10/2021):** there are now 2 versions of the hand landmark model: `full` and `lite`. `full` is more accurate but slower then `lite`. The older version (mediapipe tag 0.8.0, 04/12/2020) is a bit faster than the new `lite` version so it is still available in the models directory (hand_landmark_080_sh4.blob).
+  *  **New Mediapipe Landmark models (released 18/10/2021):** there are now 2 versions of the hand landmark model: `full` and `lite`. `full` is more accurate but slower then `lite`. The older version (mediapipe tag 0.8.0, 04/12/2020) is a bit faster than the new `lite` version, is still available in the models directory (hand_landmark_080_sh4.blob).
 
 
 ## Introduction
@@ -109,7 +111,7 @@ Also the FPS highly depends on the number of hands currently in the image. It ma
 Important recommendation: **tune the internal FPS !** By default, the internal camera FPS is set to a value that depends on chosen modes and on the use of depth ("-xyz"). These default values are based on my own observations.
 When starting the demo, you will see a line like below:
 ```
-Internal camera FPS set to: 39
+Internal camera FPS set to: 36
 ```
  Please, don't hesitate to play with the parameter `internal_fps` (via `--internal_fps` argument in the demos) to find the optimal value for your use case. If the observed FPS is well below the default value, you should lower the FPS with this parameter until the set FPS is just above the observed FPS.
 
@@ -134,7 +136,7 @@ usage: demo_bpf.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
                    [--internal_frame_height INTERNAL_FRAME_HEIGHT]
                    [-bpf {right,left,group,higher}] [-ah]
                    [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
-                   [--dont_force_same_image] [-lmt {1,2}] [-t] [-o OUTPUT]
+                   [-t] [-o OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -147,7 +149,7 @@ Tracker arguments:
   --pd_model PD_MODEL   Path to a blob file for palm detection model
   --no_lm               Only the palm detection model is run (no hand landmark
                         model)
-  --lm_model LM_MODEL   Path to a blob file for landmark model
+  --lm_model LM_MODEL   Landmark model 'full' or 'lite' or path to a blob file
   -s, --solo            Solo mode: detect one hand max. If not used, detect 2
                         hands max (Duo mode)
   -xyz, --xyz           Enable spatial location measure of palm centers
@@ -168,28 +170,24 @@ Tracker arguments:
   --single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH
                         (Duo mode only) Number of frames after only one hand
                         is detected before calling palm detection (default=10)
-  --dont_force_same_image
-                        (Edge Duo mode only) Don't force the use the same
-                        image when inferring the landmarks of the 2 hands
-                        (slower but skeleton less shifted
-  -lmt {1,2}, --lm_nb_threads {1,2}
-                        Number of the landmark model inference threads
-                        (default=2)
   -t, --trace           Print some debug messages
 
 Renderer arguments:
   -o OUTPUT, --output OUTPUT
                         Path to output video file
-
 ```
 
 **Some examples:**
 
 Whenever you see `demo.py`, you can replace by `demo_bpf.py`.
 
-- To use the color camera as input in Host mode:
+- To use the color camera as input in Host mode (by default, the `lite` version of the landmark model is used):
 
     ```./demo.py``` 
+
+- Same as above but with the `full` version of the landmark model:
+
+    ```./demo.py --lm_model full``` 
 
 - To use the color camera as input in Edge mode (recommended for Solo mode):
 
