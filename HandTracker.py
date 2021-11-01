@@ -13,6 +13,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
 LANDMARK_MODEL_FULL = str(SCRIPT_DIR / "models/hand_landmark_full_sh4.blob")
 LANDMARK_MODEL_LITE = str(SCRIPT_DIR / "models/hand_landmark_lite_sh4.blob")
+LANDMARK_MODEL_SPARSE = str(SCRIPT_DIR / "models/hand_landmark_sparse_sh4.blob")
 
 def to_planar(arr: np.ndarray, shape: tuple) -> np.ndarray:
     return cv2.resize(arr, shape).transpose(2,0,1)#.flatten()
@@ -32,7 +33,8 @@ class HandTracker:
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
     - lm_model: landmark model. Either:
                     - 'full' for LANDMARK_MODEL_FULL,
-                    - 'lite' for LANDMARK_MODEL_LITE
+                    - 'lite' for LANDMARK_MODEL_LITE,
+                    - 'sparse' for LANDMARK_MODEL_SPARSE,
                     - a path of a blob file. 
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
@@ -85,6 +87,8 @@ class HandTracker:
                 self.lm_model = LANDMARK_MODEL_FULL
             elif lm_model == "lite":
                 self.lm_model = LANDMARK_MODEL_LITE
+            elif lm_model == "sparse":
+                self.lm_model = LANDMARK_MODEL_SPARSE
             else:
                 self.lm_model = lm_model
             print(f"Landmark blob       : {self.lm_model}")

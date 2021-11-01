@@ -61,4 +61,5 @@ convert_model () {
 convert_model palm_detection "[127.5,127.5,127.5]"  "[127.5,127.5,127.5]" "u8"
 convert_model hand_landmark_full "" "[255.0,255.0,255.0]" "u8"
 convert_model hand_landmark_lite "" "[255.0,255.0,255.0]" "u8"
+convert_model hand_landmark_sparse "" "[255.0,255.0,255.0]" "u8"
 convert_model hand_landmark_080 "" "[255.0,255.0,255.0]" "u8"

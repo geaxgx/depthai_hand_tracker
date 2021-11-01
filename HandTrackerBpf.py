@@ -13,6 +13,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
 LANDMARK_MODEL_FULL = str(SCRIPT_DIR / "models/hand_landmark_full_sh4.blob")
 LANDMARK_MODEL_LITE = str(SCRIPT_DIR / "models/hand_landmark_lite_sh4.blob")
+LANDMARK_MODEL_SPARSE = str(SCRIPT_DIR / "models/hand_landmark_sparse_sh4.blob")
 MOVENET_LIGHTNING_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_lightning_U8_transpose.blob")
 MOVENET_THUNDER_MODEL = str(SCRIPT_DIR / "models/movenet_singlepose_thunder_U8_transpose.blob")
 
@@ -36,7 +37,8 @@ class HandTrackerBpf:
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
     - lm_model: landmark model. Either:
                     - 'full' for LANDMARK_MODEL_FULL,
-                    - 'lite' for LANDMARK_MODEL_LITE
+                    - 'lite' for LANDMARK_MODEL_LITE,
+                    - 'sparse' for LANDMARK_MODEL_SPARSE,
                     - a path of a blob file. 
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
@@ -96,6 +98,8 @@ class HandTrackerBpf:
                 self.lm_model = LANDMARK_MODEL_FULL
             elif lm_model == "lite":
                 self.lm_model = LANDMARK_MODEL_LITE
+            elif lm_model == "sparse":
+                self.lm_model = LANDMARK_MODEL_SPARSE
             else:
                 self.lm_model = lm_model
             print(f"Landmark blob       : {self.lm_model}")

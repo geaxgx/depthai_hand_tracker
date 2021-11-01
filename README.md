@@ -22,6 +22,8 @@ Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.
   - [Credits](#credits)
 
 ## What's new ?
+* 01/11/2021: 
+  * **Add sparse version of Mediapipe Landmark models:** the tflite sparse version was released by Google Mediapipe on 18/10/2021, with the full and lite versions, but until now it hadn't been successfully converted into a blob file. This has changed thanks to the effort of [Pinto](https://github.com/PINTO0309). After conversion, we lose the advantage of a smaller model size (the sparse tflite model is 60% smaller than the full tflite model, whereas the sparse blob is only 2% smaller than the full blob). But the sparse blob model is around 10% faster than the full one (that's what made me include the sparse version in this repository). So in practice, now, we have the option `sparse`, in addition to `full` and `lite` for the `lm_model` argument.
 * 24/10/2021:
   * **Duo mode** replaces Multimode: Duo mode means "fast 2 hands tracking" (fast because calculated ROIs from landmarks of the previous frame are used whenever possible). With older Multimode, there was no limit on the number of hands but no smart tracking either, the slow palm detection was called on every frame. Solo mode is still available and is still the preferred mode if your application does not need 2 hands detection.
   
@@ -130,13 +132,12 @@ python3 -m pip install -r requirements.txt
 Use `demo.py` or `demo_bpf.py` depending on whether or not you nedd Bpdy Pre Focusing. `demo_bpf.py` has the same arguments as `demo.py` with 2 more, which are related to BPF: `--body_pre_focusing` and `--all_hands`.
 ```
 ->./demo_bpf.py -h
-usage: demo_bpf.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
-                   [--lm_model LM_MODEL] [-s] [-xyz] [-g] [-c]
-                   [-f INTERNAL_FPS] [-r {full,ultra}]
-                   [--internal_frame_height INTERNAL_FRAME_HEIGHT]
-                   [-bpf {right,left,group,higher}] [-ah]
-                   [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
-                   [-t] [-o OUTPUT]
+usage: demo.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
+               [--lm_model LM_MODEL] [-s] [-xyz] [-g] [-c] [-f INTERNAL_FPS]
+               [-r {full,ultra}]
+               [--internal_frame_height INTERNAL_FRAME_HEIGHT] [-lh]
+               [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
+               [-t] [-o OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -149,7 +150,8 @@ Tracker arguments:
   --pd_model PD_MODEL   Path to a blob file for palm detection model
   --no_lm               Only the palm detection model is run (no hand landmark
                         model)
-  --lm_model LM_MODEL   Landmark model 'full' or 'lite' or path to a blob file
+  --lm_model LM_MODEL   Landmark model 'full', 'lite', 'sparse' or path to a
+                        blob file
   -s, --solo            Solo mode: detect one hand max. If not used, detect 2
                         hands max (Duo mode)
   -xyz, --xyz           Enable spatial location measure of palm centers
@@ -163,10 +165,9 @@ Tracker arguments:
                         (3840x2160) (default=full)
   --internal_frame_height INTERNAL_FRAME_HEIGHT
                         Internal color camera frame height in pixels
-  -bpf {right,left,group,higher}, --body_pre_focusing {right,left,group,higher}
-                        Enable Body Pre Focusing
-  -ah, --all_hands      In Body Pre Focusing mode, consider all hands (not
-                        only the hands up)
+  -lh, --use_last_handedness
+                        Use last inferred handedness. Otherwise use handedness
+                        average (more robust)
   --single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH
                         (Duo mode only) Number of frames after only one hand
                         is detected before calling palm detection (default=10)
@@ -253,19 +254,20 @@ Whenever you see `demo.py`, you can replace by `demo_bpf.py`.
 You can find the models *palm_detector.blob* and *hand_landmark_\*.blob* under the 'models' directory, but below I describe how to get the files.
 
 1) Clone this github repository in a local directory (DEST_DIR)
-2) In DEST_DIR/models directory, download the source tflite models from [this archive](https://drive.google.com/file/d/1Uejw7Mi5K5LHaeKqWAs4t3KlWNuOJbPw/view?usp=sharing). The archive contains:
+2) In DEST_DIR/models directory, download the source tflite models from [this archive](https://drive.google.com/file/d/1wmle8tvga6S_m0uEogB-Z1sRxOibdoFc/view?usp=sharing). The archive contains:
 * Palm Detection model: palm_detection.tflite : mediapipe tag 0.8.0 04/11/2020 size: 3877888
 
 * Hand Landmarks models:
   - hand_landmark_full.tflite: mediapipe 18/10/2021 size: 5478688
   - hand_landmark_lite.tflite: mediapipe 18/10/2021 size: 2071408
-  - hand_landmark_080.tflite: mediapipe tag 0.8.0 04/11/2020 size: 3792620 (this older version is still proposed as it is a bit faster than the recent full and lite versions)
+  - hand_landmark_sparse.lite: mediapipe 18/10:2021 size: 2175808
+  - hand_landmark_080.tflite: mediapipe tag 0.8.0 04/11/2020 size: 3792620 (this older version is still proposed as it is a bit faster than the recent full, lite or sparse versions)
 - 
 3) Install the amazing [PINTO's tflite2tensorflow tool](https://github.com/PINTO0309/tflite2tensorflow). Use the docker installation which includes many packages including a recent version of Openvino.
 4) From DEST_DIR, run the tflite2tensorflow container:  ```./docker_tflite2tensorflow.sh```
 5) From the running container: 
 ```
-cd resources/models
+cd models
 ./convert_models.sh
 ```
 The *convert_models.sh* converts the tflite models in tensorflow (.pb), then converts the pb file into Openvino IR format (.xml and .bin), and finally converts the IR files in MyriadX format (.blob). 

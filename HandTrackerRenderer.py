@@ -220,8 +220,11 @@ class HandTrackerRenderer:
         elif key == ord('f'):
             self.show_fps = not self.show_fps
         elif key == ord('b'):
-            if self.tracker.body_pre_focusing:
-                self.show_body = not self.show_body 
+            try:
+                if self.tracker.body_pre_focusing:
+                    self.show_body = not self.show_body 
+            except:
+                pass
         elif key == ord('s'):
             self.show_inferences_status = not self.show_inferences_status
         return key

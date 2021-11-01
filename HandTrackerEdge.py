@@ -17,6 +17,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PALM_DETECTION_MODEL = str(SCRIPT_DIR / "models/palm_detection_sh4.blob")
 LANDMARK_MODEL_FULL = str(SCRIPT_DIR / "models/hand_landmark_full_sh4.blob")
 LANDMARK_MODEL_LITE = str(SCRIPT_DIR / "models/hand_landmark_lite_sh4.blob")
+LANDMARK_MODEL_SPARSE = str(SCRIPT_DIR / "models/hand_landmark_sparse_sh4.blob")
 DETECTION_POSTPROCESSING_MODEL = str(SCRIPT_DIR / "custom_models/PDPostProcessing_top2_sh1.blob")
 TEMPLATE_MANAGER_SCRIPT_SOLO = str(SCRIPT_DIR / "template_manager_script_solo.py")
 TEMPLATE_MANAGER_SCRIPT_DUO = str(SCRIPT_DIR / "template_manager_script_duo.py")
@@ -42,7 +43,8 @@ class HandTracker:
     - use_lm: boolean. When True, run landmark model. Otherwise, only palm detection model is run
     - lm_model: landmark model. Either:
                     - 'full' for LANDMARK_MODEL_FULL,
-                    - 'lite' for LANDMARK_MODEL_LITE
+                    - 'lite' for LANDMARK_MODEL_LITE,
+                    - 'sparse' for LANDMARK_MODEL_SPARSE,
                     - a path of a blob file.  
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
     - pp_model: path to the detection post processing model,
@@ -105,6 +107,8 @@ class HandTracker:
             self.lm_model = LANDMARK_MODEL_FULL
         elif lm_model == "lite":
             self.lm_model = LANDMARK_MODEL_LITE
+        elif lm_model == "sparse":
+                self.lm_model = LANDMARK_MODEL_SPARSE
         else:
             self.lm_model = lm_model
         print(f"Landmark blob           : {self.lm_model}")
@@ -165,6 +169,11 @@ class HandTracker:
                         self.internal_fps = 29 
                     else:
                         self.internal_fps = 36 
+                elif lm_model == "sparse":
+                    if self.xyz:
+                        self.internal_fps = 24 
+                    else:
+                        self.internal_fps = 29
                 else:
                     self.internal_fps = 39
             else:
