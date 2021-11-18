@@ -16,6 +16,8 @@ To generate the Post Processing model, some python packages are needed: torch, o
 > python3 -m pip install -r requirements.txt
 ```
 
+*Note the restriction on torch version in requirements.txt. A newer version of torch (1.10) generates an [error](https://github.com/geaxgx/depthai_hand_tracker/issues/8) when converting the ONNX model to Openvino IR (2021.4).*
+
 ## Build the ONNX model
 
 The post processing model:
@@ -38,7 +40,6 @@ Start the tflite2tensorflow docker container (here we just use the OpenVINO dist
 
 Then, from the container shell, `convert_model.sh` converts the ONNX patched model to OpenVINO IR format wihich is compiled into `PDPostProcessing_top2_sh1.blob`:
 ```
-cd workdir
 ./convert_model.sh  # Add `-s #` if you want to specify a number of shaves other than 1
 ```
 

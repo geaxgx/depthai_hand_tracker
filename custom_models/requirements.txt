@@ -1,0 +1,6 @@
+torch == 1.9
+torchvision == 0.10.0
+onnx >= 1.10
+onnx-simplifier
+--extra-index-url https://pypi.ngc.nvidia.com
+onnx_graphsurgeon 
