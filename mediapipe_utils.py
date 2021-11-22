@@ -244,16 +244,32 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors, best_only=False):
         regions.append(HandRegion(float(score), box, kps))
     return regions
 
-def non_max_suppression(regions, nms_thresh):
-
-    # cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) needs:
-    # boxes = [ [x, y, w, h], ...] with x, y, w, h of type int
-    # Currently, x, y, w, h are float between 0 and 1, so we arbitrarily multiply by 1000 and cast to int
-    # boxes = [r.box for r in regions]
-    boxes = [ [int(x*1000) for x in r.pd_box] for r in regions]        
-    scores = [r.pd_score for r in regions]
-    indices = cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) # Not using top_k=2 here because it does not give expected result. Bug ?
-    return [regions[i[0]] for i in indices]
+# Starting from opencv 4.5.4, cv2.dnn.NMSBoxes output format changed
+import re
+cv2_version = cv2.__version__.split('.')
+v0 = int(cv2_version[0])
+v1 = int(cv2_version[1])
+v2 = int(re.sub(r'\D+', '', cv2_version[2]))
+if  v0 > 4 or (v0 == 4 and (v1 > 5 or (v1 == 5 and v2 >= 4))):
+    def non_max_suppression(regions, nms_thresh):
+        # cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) needs:
+        # boxes = [ [x, y, w, h], ...] with x, y, w, h of type int
+        # Currently, x, y, w, h are float between 0 and 1, so we arbitrarily multiply by 1000 and cast to int
+        # boxes = [r.box for r in regions]
+        boxes = [ [int(x*1000) for x in r.pd_box] for r in regions]        
+        scores = [r.pd_score for r in regions]
+        indices = cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) # Not using top_k=2 here because it does not give expected result. Bug ?
+        return [regions[i] for i in indices]
+else:
+    def non_max_suppression(regions, nms_thresh):
+        # cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) needs:
+        # boxes = [ [x, y, w, h], ...] with x, y, w, h of type int
+        # Currently, x, y, w, h are float between 0 and 1, so we arbitrarily multiply by 1000 and cast to int
+        # boxes = [r.box for r in regions]
+        boxes = [ [int(x*1000) for x in r.pd_box] for r in regions]        
+        scores = [r.pd_score for r in regions]
+        indices = cv2.dnn.NMSBoxes(boxes, scores, 0, nms_thresh) # Not using top_k=2 here because it does not give expected result. Bug ?
+        return [regions[i[0]] for i in indices]
 
 def normalize_radians(angle):
     return angle - 2 * pi * floor((angle + pi) / (2 * pi))
