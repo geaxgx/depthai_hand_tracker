@@ -66,8 +66,7 @@ class HandTracker:
                     in the following frames. Because palm detection is slow, you may want to delay 
                     the next time you will run it. 'single_hand_tolerance_thresh' is the number of 
                     frames during only one hand is detected before palm detection is run again.   
-    - lm_nb_threads : 1 or 2 (default=1), number of inference threads for the landmark model
-                    Currently, don't use 2 because of inference result corruption bug in depthai
+    - lm_nb_threads : 1 or 2 (default=2), number of inference threads for the landmark model
     - use_same_image (Edge Duo mode only) : boolean, when True, use the same image when inferring the landmarks of the 2 hands
                     (setReusePreviousImage(True) in the ImageManip node before the landmark model). 
                     When True, the FPS is significantly higher but the skeleton may appear shifted on one of the 2 hands.
@@ -79,7 +78,7 @@ class HandTracker:
                 pd_model=PALM_DETECTION_MODEL, 
                 pd_score_thresh=0.5, pd_nms_thresh=0.3,
                 use_lm=True,
-                lm_model=LANDMARK_MODEL_LITE,
+                lm_model="lite",
                 lm_score_thresh=0.5,
                 pp_model = DETECTION_POSTPROCESSING_MODEL,
                 solo=True,
@@ -91,8 +90,8 @@ class HandTracker:
                 use_gesture=False,
                 use_handedness_average=True,
                 single_hand_tolerance_thresh=10,
-                use_same_image=False,
-                lm_nb_threads=1,
+                use_same_image=True,
+                lm_nb_threads=2,
                 stats=False,
                 trace=False
                 ):

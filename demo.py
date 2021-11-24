@@ -34,10 +34,10 @@ parser_tracker.add_argument("-lh", "--use_last_handedness", action="store_true",
                     help="Use last inferred handedness. Otherwise use handedness average (more robust)")                            
 parser_tracker.add_argument('--single_hand_tolerance_thresh', type=int, default=10,
                     help="(Duo mode only) Number of frames after only one hand is detected before calling palm detection (default=%(default)s)")
-# parser_tracker.add_argument('--dont_force_same_image', action="store_true",
-#                     help="(Edge Duo mode only) Don't force the use the same image when inferring the landmarks of the 2 hands (slower but skeleton less shifted")
-# parser_tracker.add_argument('-lmt', '--lm_nb_threads', type=int, choices=[1,2], default=1, 
-#                     help="Number of the landmark model inference threads (default=%(default)i)")  
+parser_tracker.add_argument('--dont_force_same_image', action="store_true",
+                    help="(Edge Duo mode only) Don't force the use the same image when inferring the landmarks of the 2 hands (slower but skeleton less shifted)")
+parser_tracker.add_argument('-lmt', '--lm_nb_threads', type=int, choices=[1,2], default=2, 
+                    help="Number of the landmark model inference threads (default=%(default)i)")  
 parser_tracker.add_argument('-t', '--trace', action="store_true", 
                     help="Print some debug messages")                
 parser_renderer = parser.add_argument_group("Renderer arguments")
@@ -49,7 +49,7 @@ tracker_args = {a:dargs[a] for a in ['pd_model', 'lm_model', 'internal_fps', 'in
 
 if args.edge:
     from HandTrackerEdge import HandTracker
-    # tracker_args['use_same_image'] = not args.dont_force_same_image
+    tracker_args['use_same_image'] = not args.dont_force_same_image
 else:
     from HandTracker import HandTracker
 
@@ -66,7 +66,7 @@ tracker = HandTracker(
         trace=args.trace,
         use_handedness_average=not args.use_last_handedness,
         single_hand_tolerance_thresh=args.single_hand_tolerance_thresh,
-        # lm_nb_threads=args.lm_nb_threads,
+        lm_nb_threads=args.lm_nb_threads,
         **tracker_args
         )
 
@@ -76,7 +76,9 @@ renderer = HandTrackerRenderer(
 
 while True:
     # Run hand tracker on next frame
-    # 'bag' is information common to the frame and to the hands 
+    # 'bag' contains some information related to the frame 
+    # and not related to a particular hand like body keypoints in Body Pre Focusing mode
+    # Currently 'bag' contains meaningful information only when Body Pre Focusing is used
     frame, hands, bag = tracker.next_frame()
     if frame is None: break
     # Draw hands
