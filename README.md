@@ -42,7 +42,7 @@ Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.
 You must know a few concepts before choosing which options best fit your application. Some of the concepts introduced here are more detailled in the following sections.
 
 Hand Tracking from Mediapipe is a 2-stages pipeline. First, the Hand detection stage detects where are the hands in the whole image. For each detected hand, a Region of Interest (ROI) around the hand is calculated and fed to the second stage, which infers the landmarks. If the confidence in the landmarks is high enough (score above a threshold), the landmarks can be used to directly determined the ROI for the next frame (without the need to use the first stage). This means that the global speed and the FPS can vary and directly depend on the maximal number of hands we **want** to detect (Solo vs Duo modes) and the actual number of hands in the image. For instance, tracking one hand in Solo mode is faster than tracking one hand in Duo mode.
-<p align="center"><img src="img/schema_hand_tracking.png" alt="Schema" width="330"/></p>
+<p align="center"><img src="img/schema_hand_tracking.png" alt="Schema" width="500"/></p>
 
 
 We can roughly consider 2 types of application, depending on the user's position relative to the camera:
@@ -51,7 +51,7 @@ We can roughly consider 2 types of application, depending on the user's position
 
   2) The user can stand at any position in the room, so the distance user-camera can vary a lot (let's say between 1m and 5m). A good example of such application is the use of hand poses for remote controlling connected devices. In the example below, the user switches on/off a light by closing his hand, he is seated in an armchair, but we want the app to work also if he stands near the door 2 meters behind. Because the Mediapipe Hand detection model was not designed to deal with long distance,  we use a mechanism called [Body Pre Focusing](#body-pre-focusing) to help locate the hands. It is important to note that the further the distance, the more difficult the tracking is, because fast move appear fuzzier on the image. So for this type of application, it is highly recommended that once the hand pose is taken, the arm keeps still during the pose.
 
-<p align="center"><img src="img/toggle_light.gif" alt="Output: no BPF" width="300"/></p>
+<p align="center"><img src="img/toggle_light.gif" alt="Output: no BPF" width="330"/></p>
 
 
 ## Solo mode vs Duo mode
