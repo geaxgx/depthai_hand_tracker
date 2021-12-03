@@ -106,7 +106,10 @@ class HandTracker:
         else:
             assert lm_nb_threads in [1, 2]
             self.lm_nb_threads = lm_nb_threads
-        self.max_hands = 1 if self.solo else 2
+        if self.use_lm:
+            self.max_hands = 1 if self.solo else 2
+        else:
+            self.max_hands = 20
         self.xyz = False
         self.crop = crop 
         self.internal_fps = internal_fps     
@@ -196,7 +199,9 @@ class HandTracker:
         
 
         # Create SSD anchors 
-        self.anchors = mpu.generate_handtracker_anchors()
+        self.pd_input_length = 128 # Palm detection
+        # self.pd_input_length = 192 # Palm detection
+        self.anchors = mpu.generate_handtracker_anchors(self.pd_input_length, self.pd_input_length)
         self.nb_anchors = self.anchors.shape[0]
         print(f"{self.nb_anchors} anchors have been created")
 
@@ -252,8 +257,6 @@ class HandTracker:
         # Start defining a pipeline
         pipeline = dai.Pipeline()
         pipeline.setOpenVINOVersion(version = dai.OpenVINO.Version.VERSION_2021_4)
-
-        self.pd_input_length = 128 # Palm detection
 
         if self.input_type == "rgb":
             # ColorCamera
@@ -381,10 +384,13 @@ class HandTracker:
    
 
     def pd_postprocess(self, inference):
+        # print(inference.getAllLayerNames())
         scores = np.array(inference.getLayerFp16("classificators"), dtype=np.float16) # 896
+        # scores = np.array(inference.getLayerFp16("Identity_1"), dtype=np.float16)
         bboxes = np.array(inference.getLayerFp16("regressors"), dtype=np.float16).reshape((self.nb_anchors,18)) # 896x18
+        # bboxes = np.array(inference.getLayerFp16("Identity"), dtype=np.float16).reshape((self.nb_anchors,18)) 
         # Decode bboxes
-        self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, best_only=self.solo)
+        self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, scale=self.pd_input_length, best_only=self.solo)
         # Non maximum suppression (not needed if solo)
         if not self.solo:
             self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)[:self.max_hands]
@@ -528,6 +534,18 @@ class HandTracker:
             bag["lm_inference"] = len(self.hands)
             self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
 
+            # Check that 2 detected hands do not correspond to the same hand in the image
+            # That may happen when one hand in the image cross another one
+            # A simple method is to assure that the center of the rotated rectangles are not too close
+            if len(self.hands) == 2: 
+                dist_rect_centers = mpu.distance(np.array((self.hands[0].rect_x_center_a, self.hands[0].rect_y_center_a)), np.array((self.hands[1].rect_x_center_a, self.hands[1].rect_y_center_a)))
+                if dist_rect_centers < 5:
+                    # Keep the hand with higher landmark score
+                    if self.hands[0].lm_score > self.hands[1].lm_score:
+                        self.hands = [self.hands[0]]
+                    else:
+                        self.hands = [self.hands[1]]
+
             if self.xyz:
                 self.query_xyz(self.spatial_loc_roi_from_wrist_landmark)
 
@@ -536,8 +554,8 @@ class HandTracker:
             nb_hands = len(self.hands)
 
             if self.use_handedness_average:
-                if self.nb_hands_in_previous_frame != nb_hands:
-                    for i in range(nb_hands):
+                if not self.use_previous_landmarks or self.nb_hands_in_previous_frame != nb_hands:
+                    for i in range(self.max_hands):
                         self.handedness_avg[i].reset()
                 for i in range(nb_hands):
                     self.hands[i].handedness = self.handedness_avg[i].update(self.hands[i].handedness)

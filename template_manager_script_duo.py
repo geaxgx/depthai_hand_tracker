@@ -280,13 +280,28 @@ while True:
             updated_detect_hands.append(hand)
     detected_hands = updated_detect_hands
 
+    # Check that 2 detected hands do not correspond to the same hand in the image
+    # That may happen when one hand in the image cross another one
+    # A simple method is to assure that the center of the rotated rectangles are not too close
+    if len(detected_hands) == 2: 
+        dist_rr_centers = dist([detected_hands[0][2], detected_hands[0][3]], [detected_hands[1][2], detected_hands[1][3]])
+        if dist_rr_centers < 0.02:
+            # Keep the hand with higher landmark score
+            if hand_landmarks["lm_score"][0] > hand_landmarks["lm_score"][1]:
+                pop_i = 1
+            else:
+                pop_i = 0
+            for k in ["lm_score", "handedness", "rotation", "rect_center_x", "rect_center_y", "rect_size", "rrn_lms", "sqn_lms", "xyz", "xyz_zone"]:
+                hand_landmarks[k].pop(pop_i)
+            detected_hands.pop(pop_i)
+
     nb_hands = len(detected_hands)
 
     ${_IF_USE_HANDEDNESS_AVERAGE}
-    if nb_hands_in_previous_frame != nb_hands:
-        for i in range(nb_hands):
+    if send_new_frame_to_branch == 1 or nb_hands_in_previous_frame != nb_hands:
+        for i in range(2):
             handedness_avg[i].reset()
-            ${_TRACE} (f"Reset handedness_avg {i}")
+        ${_TRACE} (f"Reset handedness_avg")
     # Replace current inferred handedness by the average handedness
     for i in range(nb_hands):
         hand_landmarks["handedness"][i] = handedness_avg[i].update(hand_landmarks["handedness"][i])

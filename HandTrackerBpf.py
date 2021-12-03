@@ -229,7 +229,8 @@ class HandTrackerBpf:
         self.glob_bpf_rtrip_time = 0
 
         # Create SSD anchors 
-        self.anchors = mpu.generate_handtracker_anchors()
+        self.pd_input_length = 128 # Palm detection
+        self.anchors = mpu.generate_handtracker_anchors(self.pd_input_length, self.pd_input_length)
         self.nb_anchors = self.anchors.shape[0]
         print(f"{self.nb_anchors} anchors have been created")
 
@@ -285,8 +286,6 @@ class HandTrackerBpf:
         # Start defining a pipeline
         pipeline = dai.Pipeline()
         pipeline.setOpenVINOVersion(version = dai.OpenVINO.Version.VERSION_2021_4)
-
-        self.pd_input_length = 128 # Palm detection
 
         if self.input_type == "rgb":
             # ColorCamera
@@ -662,6 +661,19 @@ class HandTrackerBpf:
                 self.lm_postprocess(h, inference)
             bag["lm_inference"] = len(self.hands)
             self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
+
+            # Check that 2 detected hands do not correspond to the same hand in the image
+            # That may happen when one hand in the image cross another one
+            # A simple method is to assure that the center of the rotated rectangles are not too close
+            if len(self.hands) == 2: 
+                dist_rect_centers = mpu.distance(np.array((self.hands[0].rect_x_center_a, self.hands[0].rect_y_center_a)), np.array((self.hands[1].rect_x_center_a, self.hands[1].rect_y_center_a)))
+                if dist_rect_centers < 5:
+                    # Keep the hand with higher landmark score
+                    if self.hands[0].lm_score > self.hands[1].lm_score:
+                        self.hands = [self.hands[0]]
+                    else:
+                        self.hands = [self.hands[1]]
+
             nb_hands = len(self.hands)
 
             if self.xyz:

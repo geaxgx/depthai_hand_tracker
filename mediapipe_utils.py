@@ -139,13 +139,13 @@ def generate_anchors(options):
         layer_id = last_same_stride_layer
     return np.array(anchors)
 
-def generate_handtracker_anchors():
+def generate_handtracker_anchors(input_size_width, input_size_height):
     # https://github.com/google/mediapipe/blob/master/mediapipe/modules/palm_detection/palm_detection_cpu.pbtxt
     anchor_options = SSDAnchorOptions(num_layers=4, 
                             min_scale=0.1484375,
                             max_scale=0.75,
-                            input_size_height=128,
-                            input_size_width=128,
+                            input_size_height=input_size_height,
+                            input_size_width=input_size_width,
                             anchor_offset_x=0.5,
                             anchor_offset_y=0.5,
                             strides=[8, 16, 16, 16],
@@ -155,7 +155,7 @@ def generate_handtracker_anchors():
                             fixed_anchor_size=True)
     return generate_anchors(anchor_options)
 
-def decode_bboxes(score_thresh, scores, bboxes, anchors, best_only=False):
+def decode_bboxes(score_thresh, scores, bboxes, anchors, scale=128, best_only=False):
     """
     wi, hi : NN input shape
     mediapipe/calculators/tflite/tflite_tensors_to_detections_calculator.cc
@@ -190,8 +190,34 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors, best_only=False):
             }
         }
     }
+    node {
+        calculator: "TensorsToDetectionsCalculator"
+        input_stream: "TENSORS:detection_tensors"
+        input_side_packet: "ANCHORS:anchors"
+        output_stream: "DETECTIONS:unfiltered_detections"
+        options: {
+            [mediapipe.TensorsToDetectionsCalculatorOptions.ext] {
+            num_classes: 1
+            num_boxes: 2016
+            num_coords: 18
+            box_coord_offset: 0
+            keypoint_coord_offset: 4
+            num_keypoints: 7
+            num_values_per_keypoint: 2
+            sigmoid_score: true
+            score_clipping_thresh: 100.0
+            reverse_output_order: true
 
-    scores: shape = [number of anchors 896]
+            x_scale: 192.0
+            y_scale: 192.0
+            w_scale: 192.0
+            h_scale: 192.0
+            min_score_thresh: 0.5
+            }
+        }
+    }
+
+    scores: shape = [number of anchors 896 or 2016]
     bboxes: shape = [ number of anchors x 18], 18 = 4 (bounding box : (cx,cy,w,h) + 14 (7 palm keypoints)
     """
     regions = []
@@ -209,7 +235,8 @@ def decode_bboxes(score_thresh, scores, bboxes, anchors, best_only=False):
         det_bboxes2 = bboxes[detection_mask]
         det_anchors = anchors[detection_mask]
 
-    scale = 128 # x_scale, y_scale, w_scale, h_scale
+    # scale = 128 # x_scale, y_scale, w_scale, h_scale
+    # scale = 192 # x_scale, y_scale, w_scale, h_scale
 
     # cx, cy, w, h = bboxes[i,:4]
     # cx = cx * anchor.w / wi + anchor.x_center 

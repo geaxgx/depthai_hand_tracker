@@ -1,6 +1,6 @@
 # Hand tracking with DepthAI
 
-Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.luxonis.com/projects/hardware/en/latest/) hardware (OAK-D-lite, OAK-D, OAK-1,...)
+Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.luxonis.com/projects/hardware/en/latest/) hardware (OAK-D, OAK-1,...)
 
 <p align="center"><img src="img/hand_tracker.gif" alt="Demo" /></p>
 
