@@ -65,7 +65,8 @@ class HandTrackerBpf:
                     frames during only one hand is detected before palm detection is run again.
     - lm_nb_threads : 1 or 2 (default=2), number of inference threads for the landmark model
     - stats : boolean, when True, display some statistics when exiting.   
-    - trace: boolean, when True print some debug messages or show some intermediary step images   
+    - trace : int, 0 = no trace, otherwise print some debug messages or show output of ImageManip nodes
+            if trace & 1, print application level info like number of palm detections  
     """
     def __init__(self, input_src=None,
                 pd_model=PALM_DETECTION_MODEL, 
@@ -87,7 +88,7 @@ class HandTrackerBpf:
                 single_hand_tolerance_thresh=10,
                 lm_nb_threads=2,
                 stats=False,
-                trace=False
+                trace=0
                 ):
 
         self.pd_model = pd_model
@@ -439,13 +440,13 @@ class HandTrackerBpf:
         scores = np.array(inference.getLayerFp16("classificators"), dtype=np.float16) # 896
         bboxes = np.array(inference.getLayerFp16("regressors"), dtype=np.float16).reshape((self.nb_anchors,18)) # 896x18
         # Decode bboxes
-        self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, best_only=self.solo)
+        hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, best_only=self.solo)
         # Non maximum suppression (not needed if solo)
         if not self.solo:
-            self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)
+            hands = mpu.non_max_suppression(hands, self.pd_nms_thresh)
         if focus_zone:
             zone_size = focus_zone[2] - focus_zone[0]
-            for h in self.hands:
+            for h in hands:
                 box = h.pd_box * zone_size
                 box[0] += focus_zone[0] 
                 box[1] += focus_zone[1]
@@ -455,9 +456,9 @@ class HandTrackerBpf:
                     kp += focus_zone[0:2]
                     kp /= self.frame_size
         if self.use_lm:
-            mpu.detections_to_rect(self.hands)
-            mpu.rect_transformation(self.hands, self.frame_size, self.frame_size)
-
+            mpu.detections_to_rect(hands)
+            mpu.rect_transformation(hands, self.frame_size, self.frame_size)
+        return hands
 
     def lm_postprocess(self, hand, inference):
         hand.lm_score = inference.getLayerFp16("Identity_1")[0]  
@@ -603,6 +604,8 @@ class HandTrackerBpf:
             # Get body pose
             inference = self.q_bpf_out.get()
             focus_zone, hand_zone_label, body = self.bpf_postprocess(inference)
+            if self.trace & 1:
+                print(f"Body pose - focus zone: {None if focus_zone is None else hand_zone_label}")
             self.crop_region = body.next_crop_region
             self.nb_bpf_inferences += 1
             bag["bpf_inference"] = 1
@@ -616,8 +619,8 @@ class HandTrackerBpf:
                 focus_zone[2] += self.pad_w
                 focus_zone[3] += self.pad_h
                 focus_frame = square_frame[focus_zone[1]:focus_zone[3], focus_zone[0]:focus_zone[2]]
-                # if self.trace:
-                #     cv2.imshow("BPF frame", focus_frame)
+                if self.trace & 2:
+                    cv2.imshow("BPF frame", focus_frame)
                 if self.input_type != "rgb": 
                     self.glob_bpf_rtrip_time += now() - bpf_rtrip_time
                 # Send image to pd_nn
@@ -631,17 +634,24 @@ class HandTrackerBpf:
             else:
                 self.nb_frames_no_hand += 1
                 return video_frame, [], bag
+           
 
         # Get palm detection
-        if not self.use_previous_landmarks:
+        if self.use_previous_landmarks:
+            self.hands = self.hands_from_landmarks
+        else:
             inference = self.q_pd_out.get()
             if self.input_type != "rgb": 
                 self.glob_pd_rtrip_time += now() - pd_rtrip_time
-            self.pd_postprocess(inference, focus_zone)
+            hands = self.pd_postprocess(inference, focus_zone)
+            if self.trace & 1:
+                print(f"Palm detection - nb hands detected: {len(hands)}")
             self.nb_frames_pd_inference += 1  
             bag["pd_inference"] = 1 
-        else:
-            self.hands = self.hands_from_landmarks
+            if not self.solo and self.nb_hands_in_previous_frame == 1 and len(hands) <= 1:
+                self.hands = self.hands_from_landmarks
+            else:
+                self.hands = hands
 
         if len(self.hands) == 0: self.nb_frames_no_hand += 1
 
@@ -662,6 +672,9 @@ class HandTrackerBpf:
             bag["lm_inference"] = len(self.hands)
             self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
 
+            if self.trace & 1:
+                print(f"Landmarks - nb hands detected : {len(self.hands)}")
+
             # Check that 2 detected hands do not correspond to the same hand in the image
             # That may happen when one hand in the image cross another one
             # A simple method is to assure that the center of the rotated rectangles are not too close
@@ -673,6 +686,7 @@ class HandTrackerBpf:
                         self.hands = [self.hands[0]]
                     else:
                         self.hands = [self.hands[1]]
+                    if self.trace & 1: print("!!! Removing one hand because too close to the other one")
 
             nb_hands = len(self.hands)
 
@@ -735,10 +749,18 @@ class HandTrackerBpf:
                         else: # nb_hands == 0
                             self.use_previous_landmarks = False
                 elif nb_hands != self.nb_hands_in_previous_frame:   
-                    # For this current frame, we use the inferred handedness because
-                    # we don't have recent body information to rely on
-                    # But we ask for body detection for the next frame
+                    # We ask for body detection for the next frame
                     self.use_previous_landmarks = False   
+                    # ...but there is a chance that we don't use body detection result 
+                    # if there is only one hand
+                    if nb_hands == 1: 
+                        # Actually we have also nb_hands_in_previous_frame = 2
+                        # The current detected hand was detected from one of the 2 hands_from_landmarks
+                        # Which one ? The one which has its handedness (or landmarks or norm_landmarks)
+                        # attribute filled
+                        hand_i =  0 if hasattr(self.hands_from_landmarks[0], "handedness") else 1
+                        self.hands[0].handedness = self.previous_handedness[hand_i]
+                        self.hands_from_landmarks = [mpu.hand_landmarks_to_rect(self.hands[0])] 
                 else:
                     if nb_hands == 2:
                         self.hands[0].handedness = self.previous_handedness[0]

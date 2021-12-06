@@ -592,7 +592,7 @@ class Body:
         """
         Calculate the distance between a hand (class Hand) wrist position 
         and one of the body wrist given by wrist_handedness (= "left" or "right")
-        If the hand.landmarks cooordinates are exprexxed in the padded image, we must substract the padding (given by pad_w and pad_w)
+        As the hand.landmarks cooordinates are expressed in the padded image, we must substract the padding (given by pad_w and pad_w)
         to be coherent with the body keypoint coordinates which are expressed in the source image.
         """
         return distance(hand.landmarks[0]-np.array([pad_w, pad_h]), self.keypoints[BODY_KP[wrist_handedness+'_wrist']])

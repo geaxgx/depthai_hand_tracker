@@ -16,7 +16,7 @@ img_w = ${_img_w}
 frame_size = ${_frame_size}
 crop_w = ${_crop_w}
 
-${_TRACE} ("Starting manager script node")
+${_TRACE1} ("Starting manager script node")
 
 ${_IF_USE_HANDEDNESS_AVERAGE}
 class HandednessAverage:
@@ -48,7 +48,7 @@ class BufferMgr:
             buf = self._bufs[size]
         except KeyError:
             buf = self._bufs[size] = Buffer(size)
-            ${_TRACE} (f"New buffer allocated: {size}")
+            ${_TRACE2} (f"New buffer allocated: {size}")
         return buf
 
 buffer_mgr = BufferMgr()
@@ -58,7 +58,7 @@ def send_result(result):
     buffer = buffer_mgr(len(result_serial))  
     buffer.getData()[:] = result_serial  
     node.io['host'].send(buffer)
-    ${_TRACE} ("Manager sent result to host")
+    ${_TRACE2} ("Manager sent result to host")
 
 # pd_inf: boolean. Has the palm detection run on the frame ?
     # nb_lm_inf: 0 or 1 (or 2 in duo mode). Number of landmark regression inferences on the frame.
@@ -105,10 +105,10 @@ while True:
     nb_lm_inf = 0
     if send_new_frame_to_branch == 1: # Routing frame to pd branch
         node.io['pre_pd_manip_cfg'].send(cfg_pre_pd)
-        ${_TRACE} ("Manager sent thumbnail config to pre_pd manip")
+        ${_TRACE2} ("Manager sent thumbnail config to pre_pd manip")
         # Wait for pd post processing's result 
         detection = node.io['from_post_pd_nn'].get().getLayerFp16("result")
-        ${_TRACE} (f"Manager received pd result (len={len(detection)}) : "+str(detection))
+        ${_TRACE2} (f"Manager received pd result (len={len(detection)}) : "+str(detection))
         # detection is list of 2x8 float
         # Currently we keep only the 8 first values as we are in solo mode
         pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection[:8]
@@ -116,7 +116,9 @@ while True:
         if pd_score < ${_pd_score_thresh}:
             send_result_no_hand(True, 0)
             send_new_frame_to_branch = 1
+            ${_TRACE1} (f"Palm detection - no hand detected")
             continue
+        ${_TRACE1} (f"Palm detection - hand detected")
 
         # scale_center_x = sqn_scale_x - sqn_rr_center_x
         # scale_center_y = sqn_scale_y - sqn_rr_center_y
@@ -135,16 +137,17 @@ while True:
     rr.size.width  = sqn_rr_size
     rr.size.height = sqn_rr_size * frame_size / img_h
     rr.angle       = degrees(rotation)
+ 
     cfg = ImageManipConfig()
     cfg.setCropRotatedRect(rr, True)
     cfg.setResize(lm_input_size, lm_input_size)
     node.io['pre_lm_manip_cfg'].send(cfg)
     nb_lm_inf += 1
-    ${_TRACE} ("Manager sent config to pre_lm manip")
+    ${_TRACE2} ("Manager sent config to pre_lm manip")
 
     # Wait for lm's result
     lm_result = node.io['from_lm_nn'].get()
-    ${_TRACE} ("Manager received result from lm nn")
+    ${_TRACE2} ("Manager received result from lm nn")
     lm_score = lm_result.getLayerFp16("Identity_1")[0]
     if lm_score > ${_lm_score_thresh}:
         handedness = lm_result.getLayerFp16("Identity_2")[0]
@@ -179,10 +182,10 @@ while True:
         cfg = SpatialLocationCalculatorConfig()
         cfg.addROI(conf_data)
         node.io['spatial_location_config'].send(cfg)
-        ${_TRACE} ("Manager sent ROI to spatial_location_config")
+        ${_TRACE2} ("Manager sent ROI to spatial_location_config")
         # Wait xyz response
         xyz_data = node.io['spatial_data'].get().getSpatialLocations()
-        ${_TRACE} ("Manager received spatial_location")
+        ${_TRACE2} ("Manager received spatial_location")
         coords = xyz_data[0].spatialCoordinates
         xyz = [coords.x, coords.y, coords.z]
         roi = xyz_data[0].config.roi
@@ -235,10 +238,11 @@ while True:
         sqn_rr_size = 2 * max(width, height) 
         sqn_rr_center_x = (center_x + 0.1 * height * sin_rot) 
         sqn_rr_center_y = (center_y - 0.1 * height * cos_rot) 
-        
+        ${_TRACE1} (f"Landmarks - hand confirmed")
     else:
         send_result_no_hand(send_new_frame_to_branch==1, nb_lm_inf)
         send_new_frame_to_branch = 1
+        ${_TRACE1} (f"Landmarks - hand not confirmed")
          ${_IF_USE_HANDEDNESS_AVERAGE}
         handedness_avg.reset()
         ${_IF_USE_HANDEDNESS_AVERAGE}

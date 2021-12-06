@@ -76,8 +76,12 @@ class HandTrackerBpf:
                     (setReusePreviousImage(True) in the ImageManip node before the landmark model). 
                     When True, the FPS is significantly higher but the skeleton may appear shifted on one of the 2 hands. 
     - stats : boolean, when True, display some statistics when exiting.   
-    - trace : boolean, when True print some debug messages or show output of ImageManip nodes
-                    (used only in Edge mode)   
+    - trace : int, 0 = no trace, otherwise print some debug messages or show output of ImageManip nodes
+            if trace & 1, print application level info like number of palm detections,
+            if trace & 2, print lower level info like when a message is sent or received by the manager script node,
+            if trace & 4, show in cv2 windows outputs of ImageManip node,
+            if trace & 8, save in file tmp_code.py the python code of the manager script node
+            Ex: if trace==3, both application and low level info are displayed.   
     """
     def __init__(self, input_src=None,
                 pd_model=PALM_DETECTION_MODEL, 
@@ -101,7 +105,7 @@ class HandTrackerBpf:
                 use_same_image=True,
                 lm_nb_threads=2,
                 stats=False,
-                trace=False
+                trace=0
                 ):
 
         self.use_lm = use_lm
@@ -236,7 +240,7 @@ class HandTrackerBpf:
             self.q_video = self.device.getOutputQueue(name="cam_out", maxSize=1, blocking=False)
         self.q_manager_out = self.device.getOutputQueue(name="manager_out", maxSize=1, blocking=False)
         # For showing outputs of ImageManip nodes (debugging)
-        if self.trace:
+        if self.trace & 4:
             self.q_pre_body_manip_out = self.device.getOutputQueue(name="pre_body_manip_out", maxSize=1, blocking=False)
             self.q_pre_pd_manip_out = self.device.getOutputQueue(name="pre_pd_manip_out", maxSize=1, blocking=False)
             self.q_pre_lm_manip_out = self.device.getOutputQueue(name="pre_lm_manip_out", maxSize=1, blocking=False)    
@@ -340,7 +344,7 @@ class HandTrackerBpf:
         cam.preview.link(pre_body_manip.inputImage)
         manager_script.outputs['pre_body_manip_cfg'].link(pre_body_manip.inputConfig)
         # For debugging
-        if self.trace:
+        if self.trace & 4:
             pre_body_manip_out = pipeline.createXLinkOut()
             pre_body_manip_out.setStreamName("pre_body_manip_out")
             pre_body_manip.out.link(pre_body_manip_out.input)
@@ -364,7 +368,7 @@ class HandTrackerBpf:
         manager_script.outputs['pre_pd_manip_cfg'].link(pre_pd_manip.inputConfig)
 
         # For debugging
-        if self.trace:
+        if self.trace & 4:
             pre_pd_manip_out = pipeline.createXLinkOut()
             pre_pd_manip_out.setStreamName("pre_pd_manip_out")
             pre_pd_manip.out.link(pre_pd_manip_out.input)
@@ -398,7 +402,7 @@ class HandTrackerBpf:
         cam.preview.link(pre_lm_manip.inputImage)
 
         # For debugging
-        if self.trace:
+        if self.trace & 4:
             pre_lm_manip_out = pipeline.createXLinkOut()
             pre_lm_manip_out.setStreamName("pre_lm_manip_out")
             pre_lm_manip.out.link(pre_lm_manip_out.input)
@@ -429,7 +433,8 @@ class HandTrackerBpf:
 
         # Perform the substitution
         code = template.substitute(
-                    _TRACE = "node.warn" if self.trace else "#",
+                    _TRACE1 = "node.warn" if self.trace & 1 else "#",
+                    _TRACE2 = "node.warn" if self.trace & 2 else "#",
                     _pd_score_thresh = self.pd_score_thresh,
                     _lm_score_thresh = self.lm_score_thresh,
                     _pad_h = self.pad_h,
@@ -451,7 +456,7 @@ class HandTrackerBpf:
         code = re.sub(r'#.*', '', code)
         code = re.sub('\n\s*\n', '\n', code)
         # For debugging
-        if self.trace:
+        if self.trace & 8:
             with open("tmp_code.py", "w") as file:
                 file.write(code)
 
@@ -496,7 +501,7 @@ class HandTrackerBpf:
             video_frame = in_video.getCvFrame()       
 
         # For debugging
-        if self.trace:
+        if self.trace & 4:
             pre_body_manip = self.q_pre_body_manip_out.tryGet()
             if pre_body_manip:
                 pre_pd_manip = pre_body_manip.getCvFrame()

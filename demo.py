@@ -38,8 +38,8 @@ parser_tracker.add_argument('--dont_force_same_image', action="store_true",
                     help="(Edge Duo mode only) Don't force the use the same image when inferring the landmarks of the 2 hands (slower but skeleton less shifted)")
 parser_tracker.add_argument('-lmt', '--lm_nb_threads', type=int, choices=[1,2], default=2, 
                     help="Number of the landmark model inference threads (default=%(default)i)")  
-parser_tracker.add_argument('-t', '--trace', action="store_true", 
-                    help="Print some debug messages")                
+parser_tracker.add_argument('-t', '--trace', type=int, nargs="?", const=1, default=0, 
+                    help="Print some debug infos. The type of info depends on the optional argument.")                
 parser_renderer = parser.add_argument_group("Renderer arguments")
 parser_renderer.add_argument('-o', '--output', 
                     help="Path to output video file")

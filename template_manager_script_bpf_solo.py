@@ -16,7 +16,7 @@ img_w = ${_img_w}
 frame_size = ${_frame_size}
 crop_w = ${_crop_w}
 
-${_TRACE} ("Starting manager script node")
+${_TRACE1} ("Starting manager script node")
 
 # Note that the output of the movenet model is a list named 'body' of 17*3 elements
 # The information for the ith keypoint is :
@@ -297,7 +297,7 @@ class BufferMgr:
             buf = self._bufs[size]
         except KeyError:
             buf = self._bufs[size] = Buffer(size)
-            ${_TRACE} (f"New buffer allocated: {size}")
+            ${_TRACE2} (f"New buffer allocated: {size}")
         return buf
         
 buffer_mgr = BufferMgr()
@@ -307,7 +307,7 @@ def send_result(result):
     buffer = buffer_mgr(len(result_serial))  
     buffer.getData()[:] = result_serial  
     node.io['host'].send(buffer)
-    ${_TRACE} ("Manager sent result to host")
+    ${_TRACE2} ("Manager sent result to host")
 
 # bd_pd_inf: 0, 1 or 2. 
 #       0: neither body and palm detections has been run on the frame;
@@ -373,10 +373,10 @@ while True:
         cfg_pre_body.setResize(${_body_input_length}, ${_body_input_length})
         cfg_pre_body.setFrameType(ImgFrame.Type.RGB888p)
         node.io['pre_body_manip_cfg'].send(cfg_pre_body)
-        ${_TRACE} ("Manager sent thumbnail config to pre_body manip")
+        ${_TRACE2} ("Manager sent thumbnail config to pre_body manip")
         # Wait for body detection result 
         body = node.io['from_body_nn'].get().getLayerFp16("Identity")
-        ${_TRACE} ("Manager received result from body_nn")
+        ${_TRACE2} ("Manager received result from body_nn")
         # Extract body keypoints and calculate smart crop for next frame
         body_x, body_y, body_scores, crop_region = movenet_postprocess(body, crop_region)
         iwr = BODY_KP['right_wrist']
@@ -385,7 +385,7 @@ while True:
         zone, hand_label = get_focus_zone("${_body_pre_focusing}")
         if zone:
             xmin, ymin, xmax, ymax = zone 
-            ${_TRACE} (f"Body pre focusing zone: ({xmin}, {ymin}), ({xmax}, {ymax})")
+            ${_TRACE1} (f"Body pre focusing zone: ({xmin}, {ymin}), ({xmax}, {ymax})")
             points = [
                 [xmin,ymin],
                 [xmax,ymin],
@@ -401,16 +401,16 @@ while True:
             cfg_pre_pd.setResize(128, 128)
             send_new_frame_to_branch = 1
         else:
-            ${_TRACE} (f"Body pre focusing zone: None")
+            ${_TRACE1} (f"Body pre focusing zone: None")
             send_result_no_hand(1, 0)
             continue
  
     if send_new_frame_to_branch == 1: # Routing frame to pd branch
         node.io['pre_pd_manip_cfg'].send(cfg_pre_pd)
-        ${_TRACE} ("Manager sent thumbnail config to pre_pd manip")
+        ${_TRACE2} ("Manager sent thumbnail config to pre_pd manip")
         # Wait for pd post processing's result 
         detection = node.io['from_post_pd_nn'].get().getLayerFp16("result")
-        ${_TRACE} ("Manager received pd result (len={len(detection)}) : "+str(detection))
+        ${_TRACE2} ("Manager received pd result (len={len(detection)}) : "+str(detection))
         # detection is list of 2x8 float
         # Currently we keep only the 8 first values as we are in solo mode
         pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection[:8]
@@ -418,7 +418,9 @@ while True:
         if pd_score < ${_pd_score_thresh}:
             send_result_no_hand(2, 0)
             send_new_frame_to_branch = 0
+            ${_TRACE1} (f"Palm detection - no hand detected")
             continue
+        ${_TRACE1} (f"Palm detection - hand detected")
 
         if zone:
             # xmin, ymin, xmax are expressed in pixel in the source image C.S.
@@ -457,11 +459,11 @@ while True:
     cfg.setResize(lm_input_size, lm_input_size)
     node.io['pre_lm_manip_cfg'].send(cfg)
     nb_lm_inf += 1
-    ${_TRACE} ("Manager sent config to pre_lm manip")
+    ${_TRACE2} ("Manager sent config to pre_lm manip")
 
     # Wait for lm's result
     lm_result = node.io['from_lm_nn'].get()
-    ${_TRACE} ("Manager received result from lm nn")
+    ${_TRACE2} ("Manager received result from lm nn")
     lm_score = lm_result.getLayerFp16("Identity_1")[0]
     if lm_score > ${_lm_score_thresh}:
         handedness = lm_result.getLayerFp16("Identity_2")[0]
@@ -505,10 +507,10 @@ while True:
         cfg = SpatialLocationCalculatorConfig()
         cfg.addROI(conf_data)
         node.io['spatial_location_config'].send(cfg)
-        ${_TRACE} ("Manager sent ROI to spatial_location_config")
+        ${_TRACE2} ("Manager sent ROI to spatial_location_config")
         # Wait xyz response
         xyz_data = node.io['spatial_data'].get().getSpatialLocations()
-        ${_TRACE} ("Manager received spatial_location")
+        ${_TRACE2} ("Manager received spatial_location")
         coords = xyz_data[0].spatialCoordinates
         xyz = [coords.x, coords.y, coords.z]
         roi = xyz_data[0].config.roi
@@ -561,8 +563,9 @@ while True:
         sqn_rr_size = 2 * max(width, height) 
         sqn_rr_center_x = (center_x + 0.1 * height * sin_rot) 
         sqn_rr_center_y = (center_y - 0.1 * height * cos_rot) 
-        
+        ${_TRACE1} (f"Landmarks - hand confirmed")
     else:
         send_result_no_hand(2 if send_new_frame_to_branch==1 else 0, nb_lm_inf)
         send_new_frame_to_branch = 0
         previous_hand_label = None
+        ${_TRACE1} (f"Landmarks - hand not confirmed")

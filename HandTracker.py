@@ -56,7 +56,8 @@ class HandTracker:
                     frames during only one hand is detected before palm detection is run again. 
     - lm_nb_threads : 1 or 2 (default=2), number of inference threads for the landmark model
     - stats : boolean, when True, display some statistics when exiting.   
-    - trace: boolean, when True print some debug messages or show some intermediary step images   
+    - trace : int, 0 = no trace, otherwise print some debug messages or show output of ImageManip nodes
+            if trace & 1, print application level info like number of palm detections
     
     """
     def __init__(self, input_src=None,
@@ -76,7 +77,7 @@ class HandTracker:
                 single_hand_tolerance_thresh=10,
                 lm_nb_threads=2,
                 stats=False,
-                trace=False, 
+                trace=0, 
                 ):
 
         self.pd_model = pd_model
@@ -390,13 +391,14 @@ class HandTracker:
         bboxes = np.array(inference.getLayerFp16("regressors"), dtype=np.float16).reshape((self.nb_anchors,18)) # 896x18
         # bboxes = np.array(inference.getLayerFp16("Identity"), dtype=np.float16).reshape((self.nb_anchors,18)) 
         # Decode bboxes
-        self.hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, scale=self.pd_input_length, best_only=self.solo)
+        hands = mpu.decode_bboxes(self.pd_score_thresh, scores, bboxes, self.anchors, scale=self.pd_input_length, best_only=self.solo)
         # Non maximum suppression (not needed if solo)
         if not self.solo:
-            self.hands = mpu.non_max_suppression(self.hands, self.pd_nms_thresh)[:self.max_hands]
+            hands = mpu.non_max_suppression(hands, self.pd_nms_thresh)[:self.max_hands]
         if self.use_lm:
-            mpu.detections_to_rect(self.hands)
-            mpu.rect_transformation(self.hands, self.frame_size, self.frame_size)
+            mpu.detections_to_rect(hands)
+            mpu.rect_transformation(hands, self.frame_size, self.frame_size)
+        return hands
 
 
     def lm_postprocess(self, hand, inference):
@@ -505,15 +507,21 @@ class HandTracker:
                 pd_rtrip_time = now()
 
         # Get palm detection
-        if not self.use_previous_landmarks:
+        if self.use_previous_landmarks:
+            self.hands = self.hands_from_landmarks
+        else:
             inference = self.q_pd_out.get()
             if self.input_type != "rgb": 
                 self.glob_pd_rtrip_time += now() - pd_rtrip_time
-            self.pd_postprocess(inference)
+            hands = self.pd_postprocess(inference)
+            if self.trace & 1:
+                print(f"Palm detection - nb hands detected: {len(hands)}")
             self.nb_frames_pd_inference += 1  
             bag["pd_inference"] = 1 
-        else:
-            self.hands = self.hands_from_landmarks
+            if not self.solo and self.nb_hands_in_previous_frame == 1 and len(hands) <= 1:
+                self.hands = self.hands_from_landmarks
+            else:
+                self.hands = hands
 
         if len(self.hands) == 0: self.nb_frames_no_hand += 1
         
@@ -534,6 +542,9 @@ class HandTracker:
             bag["lm_inference"] = len(self.hands)
             self.hands = [ h for h in self.hands if h.lm_score > self.lm_score_thresh]
 
+            if self.trace & 1:
+                print(f"Landmarks - nb hands detected : {len(self.hands)}")
+
             # Check that 2 detected hands do not correspond to the same hand in the image
             # That may happen when one hand in the image cross another one
             # A simple method is to assure that the center of the rotated rectangles are not too close
@@ -545,6 +556,7 @@ class HandTracker:
                         self.hands = [self.hands[0]]
                     else:
                         self.hands = [self.hands[1]]
+                    if self.trace & 1: print("!!! Removing one hand because too close to the other one")
 
             if self.xyz:
                 self.query_xyz(self.spatial_loc_roi_from_wrist_landmark)
@@ -564,6 +576,7 @@ class HandTracker:
             if not self.solo and nb_hands == 2 and (self.hands[0].handedness - 0.5) * (self.hands[1].handedness - 0.5) > 0:
                 self.hands = [self.hands[0]] # We keep the hand with best score
                 nb_hands = 1
+                if self.trace & 1: print("!!! Removing one hand because same handedness")
 
             if not self.solo:
                 if nb_hands == 1:
