@@ -415,7 +415,7 @@ while True:
         # Currently we keep only the 8 first values as we are in solo mode
         pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection[:8]
         
-        if pd_score < ${_pd_score_thresh}:
+        if pd_score < ${_pd_score_thresh} or box_size < 0:
             send_result_no_hand(2, 0)
             send_new_frame_to_branch = 0
             ${_TRACE1} (f"Palm detection - no hand detected")

@@ -121,7 +121,7 @@ while True:
         # Looping the detection twice to obtain data for 2 hands
         for i in range(2):
             pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection[i*8:(i+1)*8]
-            if pd_score >= ${_pd_score_thresh}:
+            if pd_score >= ${_pd_score_thresh} and box_size > 0:
                 # scale_center_x = sqn_scale_x - sqn_rr_center_x
                 # scale_center_y = sqn_scale_y - sqn_rr_center_y
                 kp02_x = kp2_x - kp0_x

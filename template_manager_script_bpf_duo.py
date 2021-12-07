@@ -421,7 +421,7 @@ while True:
         # Looping the detection twice to obtain data for 2 hands
         for i in range(2):
             pd_score, box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y = detection[i*8:(i+1)*8]
-            if pd_score >= ${_pd_score_thresh}:
+            if pd_score >= ${_pd_score_thresh} and box_size > 0:
                 if zone:
                     # xmin, ymin, xmax are expressed in pixel in the source image C.S.
                     # box_x, box_y, box_size, kp0_x, kp0_y, kp2_x, kp2_y are normalized coords in square zone
