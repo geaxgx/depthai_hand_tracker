@@ -182,6 +182,7 @@ class HandTrackerRenderer:
     def exit(self):
         if self.output:
             self.output.release()
+        cv2.destroyAllWindows()
 
     def waitKey(self, delay=1):
         if self.show_fps:

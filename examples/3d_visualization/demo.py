@@ -3,7 +3,6 @@
 import sys
 sys.path.append("../..")
 from HandTrackerRenderer import HandTrackerRenderer
-from HandTracker3DRenderer import HandTracker3DRenderer
 from Filters import LandmarksSmoothingFilter
 import argparse
 import numpy as np
