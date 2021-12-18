@@ -10,7 +10,6 @@ import marshal
 from math import sin, cos, atan2, pi, degrees, floor, dist
 from re import T
 
-
 pad_h = ${_pad_h}
 img_h = ${_img_h}
 img_w = ${_img_w}
@@ -65,17 +64,17 @@ def send_result(result):
     ${_TRACE2} ("Manager sent result to host")
 
 # pd_inf: boolean. Has the palm detection run on the frame ?
-    # nb_lm_inf: 0 or 1 (or 2 in duo mode). Number of landmark regression inferences on the frame.
-    # pd_inf=True and nb_lm_inf=0 means the palm detection hasn't found any hand
-    # pd_inf, nb_lm_inf are used for statistics
+# nb_lm_inf: 0 or 1 (or 2 in duo mode). Number of landmark regression inferences on the frame.
+# pd_inf=True and nb_lm_inf=0 means the palm detection hasn't found any hand
+# pd_inf, nb_lm_inf are used for statistics
 def send_result_no_hand(pd_inf, nb_lm_inf):
     result = dict([("pd_inf", pd_inf), ("nb_lm_inf", nb_lm_inf)])
     send_result(result)
 
-def send_result_hands(pd_inf, nb_lm_inf, lm_score, handedness, rect_center_x, rect_center_y, rect_size, rotation, rrn_lms, sqn_lms, xyz, xyz_zone):
+def send_result_hands(pd_inf, nb_lm_inf, lm_score, handedness, rect_center_x, rect_center_y, rect_size, rotation, rrn_lms, sqn_lms, world_lms, xyz, xyz_zone):
     result = dict([("pd_inf", pd_inf), ("nb_lm_inf", nb_lm_inf), ("lm_score", lm_score), ("handedness", handedness), ("rotation", rotation),
             ("rect_center_x", rect_center_x), ("rect_center_y", rect_center_y), ("rect_size", rect_size), ("rrn_lms", rrn_lms), ('sqn_lms', sqn_lms),
-            ("xyz", xyz), ("xyz_zone", xyz_zone)])
+            ("world_lms", world_lms), ("xyz", xyz), ("xyz_zone", xyz_zone)])
     send_result(result)
 
 def rr2img(rrn_x, rrn_y):
@@ -174,7 +173,7 @@ while True:
 
     hand_landmarks = dict([("lm_score", []), ("handedness", []), ("rotation", []),
                      ("rect_center_x", []), ("rect_center_y", []), ("rect_size", []), ("rrn_lms", []), ('sqn_lms', []),
-                     ("xyz", []), ("xyz_zone", [])])
+                     ("world_lms", []), ("xyz", []), ("xyz_zone", [])])
 
     updated_detect_hands = []
 
@@ -190,6 +189,10 @@ while True:
             
            
             rrn_lms = lm_result.getLayerFp16("Identity_dense/BiasAdd/Add")
+            world_lms = 0
+            ${_IF_USE_WORLD_LANDMARKS}
+            world_lms = lm_result.getLayerFp16("Identity_3_dense/BiasAdd/Add")
+            ${_IF_USE_WORLD_LANDMARKS}
             # Retroproject landmarks into the original squared image 
             sqn_lms = []
             cos_rot = cos(rotation)
@@ -235,6 +238,7 @@ while True:
             hand_landmarks["rect_size"].append(sqn_rr_size)
             hand_landmarks["rrn_lms"].append(rrn_lms)
             hand_landmarks["sqn_lms"].append(sqn_lms)
+            hand_landmarks["world_lms"].append(world_lms)
             hand_landmarks["xyz"].append(xyz)
             hand_landmarks["xyz_zone"].append(xyz_zone)
 
@@ -301,7 +305,7 @@ while True:
                 pop_i = 1
             else:
                 pop_i = 0
-            for k in ["lm_score", "handedness", "rotation", "rect_center_x", "rect_center_y", "rect_size", "rrn_lms", "sqn_lms", "xyz", "xyz_zone"]:
+            for k in hand_landmarks:
                 hand_landmarks[k].pop(pop_i)
             detected_hands.pop(pop_i)
             ${_TRACE1} ("!!! Removing one hand because too close to the other one")
@@ -320,7 +324,7 @@ while True:
 
     # If the 2 hands have the same handedness, we discard the 2nd one
     if nb_hands == 2 and (hand_landmarks["handedness"][0] - 0.5) * (hand_landmarks["handedness"][1] - 0.5) > 0:
-        for k in ["lm_score", "handedness", "rotation", "rect_center_x", "rect_center_y", "rect_size", "rrn_lms", "sqn_lms", "xyz", "xyz_zone"]:
+        for k in hand_landmarks:
             hand_landmarks[k].pop(1)
         nb_hands = 1
         ${_TRACE1} ("!!! Removing one hand because same handedness")
@@ -330,7 +334,7 @@ while True:
     else:
         single_hand_count = 0
         
-    send_result_hands(send_new_frame_to_branch==1, nb_lm_inf, hand_landmarks["lm_score"], hand_landmarks["handedness"], hand_landmarks["rect_center_x"], hand_landmarks["rect_center_y"], hand_landmarks["rect_size"], hand_landmarks["rotation"], hand_landmarks["rrn_lms"], hand_landmarks["sqn_lms"], hand_landmarks["xyz"], hand_landmarks["xyz_zone"])
+    send_result_hands(send_new_frame_to_branch==1, nb_lm_inf, hand_landmarks["lm_score"], hand_landmarks["handedness"], hand_landmarks["rect_center_x"], hand_landmarks["rect_center_y"], hand_landmarks["rect_size"], hand_landmarks["rotation"], hand_landmarks["rrn_lms"], hand_landmarks["sqn_lms"], hand_landmarks["world_lms"], hand_landmarks["xyz"], hand_landmarks["xyz_zone"])
     
     if nb_hands == 0:
         send_new_frame_to_branch = 1

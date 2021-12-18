@@ -320,11 +320,11 @@ def send_result_no_hand(bd_pd_inf, nb_lm_inf):
     result = dict([("bd_pd_inf", bd_pd_inf), ("nb_lm_inf", nb_lm_inf)])
     send_result(result)
 
-def send_result_hand(bd_pd_inf, nb_lm_inf, lm_score, handedness, rect_center_x, rect_center_y, rect_size, rotation, rrn_lms, sqn_lms, xyz, xyz_zone):
+def send_result_hand(bd_pd_inf, nb_lm_inf, lm_score, handedness, rect_center_x, rect_center_y, rect_size, rotation, rrn_lms, sqn_lms, world_lms, xyz, xyz_zone):
       
     result = dict([("bd_pd_inf", bd_pd_inf), ("nb_lm_inf", nb_lm_inf), ("lm_score", [lm_score]), ("handedness", [handedness]), ("rotation", [rotation]),
             ("rect_center_x", [rect_center_x]), ("rect_center_y", [rect_center_y]), ("rect_size", [rect_size]), 
-            ("rrn_lms", [rrn_lms]), ('sqn_lms', [sqn_lms]), ("xyz", xyz), ("xyz_zone", xyz_zone)])
+            ("rrn_lms", [rrn_lms]), ('sqn_lms', [sqn_lms]), ('world_lms', [world_lms]), ("xyz", xyz), ("xyz_zone", xyz_zone)])
     send_result(result)
 
 def rr2img(rrn_x, rrn_y):
@@ -480,6 +480,10 @@ while True:
             previous_hand_label = "left"
 
         rrn_lms = lm_result.getLayerFp16("Identity_dense/BiasAdd/Add")
+        world_lms = 0
+        ${_IF_USE_WORLD_LANDMARKS}
+        world_lms = lm_result.getLayerFp16("Identity_3_dense/BiasAdd/Add")
+        ${_IF_USE_WORLD_LANDMARKS}
         # Retroproject landmarks into the original squared image 
         sqn_lms = []
         cos_rot = cos(rotation)
@@ -518,7 +522,7 @@ while True:
         ${_IF_XYZ}
 
         # Send result to host
-        send_result_hand(2 if send_new_frame_to_branch==1 else 0, nb_lm_inf, lm_score, handedness, sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, rotation, rrn_lms, sqn_lms, xyz, xyz_zone)
+        send_result_hand(2 if send_new_frame_to_branch==1 else 0, nb_lm_inf, lm_score, handedness, sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, rotation, rrn_lms, sqn_lms, world_lms, xyz, xyz_zone)
         send_new_frame_to_branch = 2 
 
         # Calculate the ROI for next frame

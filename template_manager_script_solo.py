@@ -61,17 +61,17 @@ def send_result(result):
     ${_TRACE2} ("Manager sent result to host")
 
 # pd_inf: boolean. Has the palm detection run on the frame ?
-    # nb_lm_inf: 0 or 1 (or 2 in duo mode). Number of landmark regression inferences on the frame.
-    # pd_inf=True and nb_lm_inf=0 means the palm detection hasn't found any hand
-    # pd_inf, nb_lm_inf are used for statistics
+# nb_lm_inf: 0 or 1 (or 2 in duo mode). Number of landmark regression inferences on the frame.
+# pd_inf=True and nb_lm_inf=0 means the palm detection hasn't found any hand
+# pd_inf, nb_lm_inf are used for statistics
 def send_result_no_hand(pd_inf, nb_lm_inf):
     result = dict([("pd_inf", pd_inf), ("nb_lm_inf", nb_lm_inf)])
     send_result(result)
 
-def send_result_hand(pd_inf, nb_lm_inf, lm_score=0, handedness=0, rect_center_x=0, rect_center_y=0, rect_size=0, rotation=0, rrn_lms=0, sqn_lms=0, xyz=0, xyz_zone=0):
+def send_result_hand(pd_inf, nb_lm_inf, lm_score=0, handedness=0, rect_center_x=0, rect_center_y=0, rect_size=0, rotation=0, rrn_lms=0, sqn_lms=0, world_lms=0, xyz=0, xyz_zone=0):
     result = dict([("pd_inf", pd_inf), ("nb_lm_inf", nb_lm_inf), ("lm_score", [lm_score]), ("handedness", [handedness]), ("rotation", [rotation]),
             ("rect_center_x", [rect_center_x]), ("rect_center_y", [rect_center_y]), ("rect_size", [rect_size]), 
-            ("rrn_lms", [rrn_lms]), ('sqn_lms', [sqn_lms]), ("xyz", [xyz]), ("xyz_zone", [xyz_zone])])
+            ("rrn_lms", [rrn_lms]), ('sqn_lms', [sqn_lms]), ('world_lms', [world_lms]), ("xyz", [xyz]), ("xyz_zone", [xyz_zone])])
     send_result(result)
 
 def rr2img(rrn_x, rrn_y):
@@ -155,6 +155,10 @@ while True:
         handedness = handedness_avg.update(handedness)
         ${_IF_USE_HANDEDNESS_AVERAGE}
         rrn_lms = lm_result.getLayerFp16("Identity_dense/BiasAdd/Add")
+        world_lms = 0
+        ${_IF_USE_WORLD_LANDMARKS}
+        world_lms = lm_result.getLayerFp16("Identity_3_dense/BiasAdd/Add")
+        ${_IF_USE_WORLD_LANDMARKS}
         # Retroproject landmarks into the original squared image 
         sqn_lms = []
         cos_rot = cos(rotation)
@@ -193,7 +197,7 @@ while True:
         ${_IF_XYZ}
 
         # Send result to host
-        send_result_hand(send_new_frame_to_branch==1, nb_lm_inf, lm_score, handedness, sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, rotation, rrn_lms, sqn_lms, xyz, xyz_zone)
+        send_result_hand(send_new_frame_to_branch==1, nb_lm_inf, lm_score, handedness, sqn_rr_center_x, sqn_rr_center_y, sqn_rr_size, rotation, rrn_lms, sqn_lms, world_lms, xyz, xyz_zone)
         send_new_frame_to_branch = 2 
 
         # Calculate the ROI for next frame

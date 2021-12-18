@@ -41,6 +41,10 @@ class HandTrackerBpf:
                     - 'sparse' for LANDMARK_MODEL_SPARSE,
                     - a path of a blob file. 
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
+    - use_world_landmarks: boolean. The landmarks model yields 2 types of 3D coordinates : 
+                    - coordinates expressed in pixels in the image, always stored in hand.landmarks,
+                    - coordinates expressed in meters in the world, stored in hand.world_landmarks 
+                    only if use_world_landmarks is True.
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
     - xyz : boolean, when True get the (x, y, z) coords of the detected hands (if the device supports depth measure).
     - crop : boolean which indicates if square cropping on source images is applied or not
@@ -74,6 +78,7 @@ class HandTrackerBpf:
                 use_lm=True,
                 lm_model="lite",
                 lm_score_thresh=0.5,
+                use_world_landmarks=False,
                 solo=False,
                 xyz=False,
                 crop=False,
@@ -132,6 +137,7 @@ class HandTrackerBpf:
         
         self.xyz = False
         self.crop = crop 
+        self.use_world_landmarks = use_world_landmarks
         self.internal_fps = internal_fps     
         self.stats = stats
         self.trace = trace
@@ -189,7 +195,6 @@ class HandTrackerBpf:
         else:
             self.input_type = "video"
             if input_src.isdigit():
-                input_type = "webcam"
                 input_src = int(input_src)
             self.cap = cv2.VideoCapture(input_src)
             self.video_fps = int(self.cap.get(cv2.CAP_PROP_FPS))
@@ -329,8 +334,11 @@ class HandTrackerBpf:
             if self.xyz:
                 print("Creating MonoCameras, Stereo and SpatialLocationCalculator nodes...")
                 # For now, RGB needs fixed focus to properly align with depth.
-                # This value was used during calibration
-                cam.initialControl.setManualFocus(130)
+                # The value used during calibration should be used here
+                calib_data = self.device.readCalibration()
+                calib_lens_pos = calib_data.getLensPosition(dai.CameraBoardSocket.RGB)
+                print(f"RGB calibration lens position: {calib_lens_pos}")
+                cam.initialControl.setManualFocus(calib_lens_pos)
 
                 mono_resolution = dai.MonoCameraProperties.SensorResolution.THE_400_P
                 left = pipeline.createMonoCamera()
@@ -461,6 +469,12 @@ class HandTrackerBpf:
         return hands
 
     def lm_postprocess(self, hand, inference):
+        # print(inference.getAllLayerNames())
+        # The output names of the landmarks model are :
+        # Identity_1 (1x1) : score 
+        # Identity_2 (1x1) : handedness
+        # Identity_3 (1x63) : world 3D landmarks (in meters)
+        # Identity (1x63) : screen 3D landmarks (in pixels)
         hand.lm_score = inference.getLayerFp16("Identity_1")[0]  
         if hand.lm_score > self.lm_score_thresh:  
             hand.handedness = inference.getLayerFp16("Identity_2")[0]
@@ -476,6 +490,10 @@ class HandTrackerBpf:
             lm_xy = np.expand_dims(hand.norm_landmarks[:,:2], axis=0)
             # lm_z = hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4
             hand.landmarks = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int)
+
+            # World landmarks
+            if self.use_world_landmarks:
+                hand.world_landmarks = np.array(inference.getLayerFp16("Identity_3_dense/BiasAdd/Add")).reshape(-1,3)
 
             if self.use_gesture: mpu.recognize_gesture(hand)
             

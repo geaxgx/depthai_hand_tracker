@@ -47,6 +47,10 @@ class HandTrackerBpf:
                     - 'sparse' for LANDMARK_MODEL_SPARSE,
                     - a path of a blob file.
     - lm_score_thresh : confidence score to determine whether landmarks prediction is reliable (a float between 0 and 1).
+    - use_world_landmarks: boolean. The landmarks model yields 2 types of 3D coordinates : 
+                    - coordinates expressed in pixels in the image, always stored in hand.landmarks,
+                    - coordinates expressed in meters in the world, stored in hand.world_landmarks 
+                    only if use_world_landmarks is True.
     - pp_model: path to the detection post processing model,
     - solo: boolean, when True detect one hand max (much faster since we run the pose detection model only if no hand was detected in the previous frame)
                     On edge mode, always True
@@ -89,6 +93,7 @@ class HandTrackerBpf:
                 use_lm=True,
                 lm_model="lite",
                 lm_score_thresh=0.5,
+                use_world_landmarks=False,
                 pp_model = DETECTION_POSTPROCESSING_MODEL,
                 solo=True,
                 xyz=False,
@@ -151,6 +156,7 @@ class HandTrackerBpf:
         
         self.xyz = False
         self.crop = crop 
+        self.use_world_landmarks = use_world_landmarks
            
         self.stats = stats
         self.trace = trace
@@ -296,8 +302,11 @@ class HandTrackerBpf:
         if self.xyz:
             print("Creating MonoCameras, Stereo and SpatialLocationCalculator nodes...")
             # For now, RGB needs fixed focus to properly align with depth.
-            # This value was used during calibration
-            cam.initialControl.setManualFocus(130)
+            # The value used during calibration should be used here
+            calib_data = self.device.readCalibration()
+            calib_lens_pos = calib_data.getLensPosition(dai.CameraBoardSocket.RGB)
+            print(f"RGB calibration lens position: {calib_lens_pos}")
+            cam.initialControl.setManualFocus(calib_lens_pos)
 
             mono_resolution = dai.MonoCameraProperties.SensorResolution.THE_400_P
             left = pipeline.createMonoCamera()
@@ -448,7 +457,8 @@ class HandTrackerBpf:
                     _body_input_length = self.body_input_length,
                     _hands_up_only = self.hands_up_only,
                     _single_hand_tolerance_thresh= self.single_hand_tolerance_thresh,
-                    _IF_USE_SAME_IMAGE = "" if self.use_same_image else '"""'
+                    _IF_USE_SAME_IMAGE = "" if self.use_same_image else '"""',
+                    _IF_USE_WORLD_LANDMARKS = "" if self.use_world_landmarks else '"""',
         )
         # Remove comments and empty lines
         import re
@@ -475,7 +485,7 @@ class HandTrackerBpf:
         hand.norm_landmarks = np.array(res['rrn_lms'][hand_idx]).reshape(-1,3)
         hand.landmarks = (np.array(res["sqn_lms"][hand_idx]) * self.frame_size).reshape(-1,2).astype(np.int)
         if self.xyz:
-            hand.xyz = res["xyz"][hand_idx]
+            hand.xyz = np.array(res["xyz"][hand_idx])
             hand.xyz_zone = res["xyz_zone"][hand_idx]
         # If we added padding to make the image square, we need to remove this padding from landmark coordinates and from rect_points
         if self.pad_h > 0:
@@ -486,6 +496,11 @@ class HandTrackerBpf:
             hand.landmarks[:,0] -= self.pad_w
             for i in range(len(hand.rect_points)):
                 hand.rect_points[i][0] -= self.pad_w
+
+        # World landmarks
+        if self.use_world_landmarks:
+            hand.world_landmarks = np.array(res["world_lms"][hand_idx]).reshape(-1, 3)
+
         if self.use_gesture: mpu.recognize_gesture(hand)
 
         return hand  

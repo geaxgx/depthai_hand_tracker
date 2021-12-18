@@ -16,6 +16,8 @@ parser_tracker.add_argument('--no_lm', action="store_true",
                     help="Only the palm detection model is run (no hand landmark model)")
 parser_tracker.add_argument("--lm_model", type=str,
                     help="Landmark model 'full', 'lite', 'sparse' or path to a blob file")
+parser_tracker.add_argument('--use_world_landmarks', action="store_true", 
+                    help="Fetch landmark 3D coordinates in meter")
 parser_tracker.add_argument('-s', '--solo', action="store_true", 
                     help="Solo mode: detect one hand max. If not used, detect 2 hands max (Duo mode)")                    
 parser_tracker.add_argument('-xyz', "--xyz", action="store_true", 
@@ -57,6 +59,7 @@ else:
 tracker = HandTracker(
         input_src=args.input, 
         use_lm= not args.no_lm, 
+        use_world_landmarks=args.use_world_landmarks,
         use_gesture=args.gesture,
         xyz=args.xyz,
         solo=args.solo,

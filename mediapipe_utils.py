@@ -23,7 +23,8 @@ class HandRegion:
                 expressed in the source rectangular image when returned to the user
         lm_score: global landmark score
         norm_landmarks : 3D landmarks coordinates in the rotated bounding rectangle, normalized [0,1]
-        landmarks : 2D landmarks coordinates in pixel in the source rectangular image
+        landmarks : 2D landmark coordinates in pixel in the source rectangular image
+        world_landmarks : 3D landmark coordinates in meter
         handedness: float between 0. and 1., > 0.5 for right hand, < 0.5 for left hand,
         label: "left" or "right", handedness translated in a string,
         xyz: real 3D world coordinates of the wrist landmark, or of the palm center (if landmarks are not used),
@@ -34,6 +35,14 @@ class HandRegion:
         self.pd_score = pd_score # Palm detection score 
         self.pd_box = pd_box # Palm detection box [x, y, w, h] normalized
         self.pd_kps = pd_kps # Palm detection keypoints
+
+    def get_rotated_world_landmarks(self):
+        world_landmarks_rotated = self.world_landmarks.copy()
+        sin_rot = sin(self.rotation)
+        cos_rot = cos(self.rotation)
+        rot_m = np.array([[cos_rot, sin_rot], [-sin_rot, cos_rot]])
+        world_landmarks_rotated[:,:2] = np.dot(world_landmarks_rotated[:,:2], rot_m)
+        return world_landmarks_rotated
 
     def print(self):
         attrs = vars(self)

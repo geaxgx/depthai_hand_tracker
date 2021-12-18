@@ -1,6 +1,6 @@
 # Hand tracking with DepthAI
 
-Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.luxonis.com/projects/hardware/en/latest/) hardware (OAK-D, OAK-1,...)
+Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.luxonis.com/projects/hardware/en/latest/) hardware (OAK-D, OAK-D lite, OAK-1,...)
 
 <p align="center"><img src="img/hand_tracker.gif" alt="Demo" /></p>
 
@@ -22,6 +22,8 @@ Running Google Mediapipe Hand Tracking models on [Luxonis DepthAI](https://docs.
   - [Credits](#credits)
 
 ## What's new ?
+* 18/12/2021:
+  * **World landmarks:** the latest versions of the landmark models have a 2nd output that yields estimated real-world 3D coordinates in meters with the origin at the hand’s approximate geometric center. Note that this brings very similar information to the "classic" output that yields also 3D coordinates but in a normalized form. To use the world landmarks, set the HandTracker's argument *use_world_landmarks* to True. It will fill the HandRegion's attribute *world_landmarks*. The example [Pseudo-3D visualization with Open3d + smoothing filtering](examples/3d_visualization) has been updated to demonstrate the differences between the various kinds of landmarks.  
 * 24/11/2021:
   * **Duo mode speed improvement:** the bug in depthai that prevented to use two threads for the landmark model has been solved. So now the default number of threads in Duo mode for this model is 2 (still can be manually set to 1 with the 'lm_nb_threads' argument), and 1 in Solo mode.
   
@@ -136,12 +138,14 @@ python3 -m pip install -r requirements.txt
 Use `demo.py` or `demo_bpf.py` depending on whether or not you nedd Bpdy Pre Focusing. `demo_bpf.py` has the same arguments as `demo.py` with 2 more, which are related to BPF: `--body_pre_focusing` and `--all_hands`.
 ```
 ->./demo_bpf.py -h
-usage: demo.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
-               [--lm_model LM_MODEL] [-s] [-xyz] [-g] [-c] [-f INTERNAL_FPS]
-               [-r {full,ultra}]
-               [--internal_frame_height INTERNAL_FRAME_HEIGHT] [-lh]
-               [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
-               [-t] [-o OUTPUT]
+usage: demo_bpf.py [-h] [-e] [-i INPUT] [--pd_model PD_MODEL] [--no_lm]
+                   [--lm_model LM_MODEL] [--use_world_landmarks] [-s] [-xyz]
+                   [-g] [-c] [-f INTERNAL_FPS] [-r {full,ultra}]
+                   [--internal_frame_height INTERNAL_FRAME_HEIGHT]
+                   [-bpf {right,left,group,higher}] [-ah]
+                   [--single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH]
+                   [--dont_force_same_image] [-lmt {1,2}] [-t [TRACE]]
+                   [-o OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -156,6 +160,8 @@ Tracker arguments:
                         model)
   --lm_model LM_MODEL   Landmark model 'full', 'lite', 'sparse' or path to a
                         blob file
+  --use_world_landmarks
+                        Fetch landmark 3D coordinates in meter
   -s, --solo            Solo mode: detect one hand max. If not used, detect 2
                         hands max (Duo mode)
   -xyz, --xyz           Enable spatial location measure of palm centers
@@ -169,13 +175,23 @@ Tracker arguments:
                         (3840x2160) (default=full)
   --internal_frame_height INTERNAL_FRAME_HEIGHT
                         Internal color camera frame height in pixels
-  -lh, --use_last_handedness
-                        Use last inferred handedness. Otherwise use handedness
-                        average (more robust)
+  -bpf {right,left,group,higher}, --body_pre_focusing {right,left,group,higher}
+                        Enable Body Pre Focusing
+  -ah, --all_hands      In Body Pre Focusing mode, consider all hands (not
+                        only the hands up)
   --single_hand_tolerance_thresh SINGLE_HAND_TOLERANCE_THRESH
                         (Duo mode only) Number of frames after only one hand
                         is detected before calling palm detection (default=10)
-  -t, --trace           Print some debug messages
+  --dont_force_same_image
+                        (Edge Duo mode only) Don't force the use the same
+                        image when inferring the landmarks of the 2 hands
+                        (slower but skeleton less shifted)
+  -lmt {1,2}, --lm_nb_threads {1,2}
+                        Number of the landmark model inference threads
+                        (default=2)
+  -t [TRACE], --trace [TRACE]
+                        Print some debug infos. The type of info depends on
+                        the optional argument.
 
 Renderer arguments:
   -o OUTPUT, --output OUTPUT
