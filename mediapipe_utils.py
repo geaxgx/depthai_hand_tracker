@@ -30,6 +30,8 @@ class HandRegion:
         xyz: real 3D world coordinates of the wrist landmark, or of the palm center (if landmarks are not used),
         xyz_zone: (left, top, right, bottom), pixel coordinates in the source rectangular image 
                 of the rectangular zone used to estimate the depth
+        gesture: (optional, set in recognize_gesture() when use_gesture==True) string corresponding to recognized gesture ("ONE","TWO","THREE","FOUR","FIVE","FIST","OK","PEACE") 
+                or None if no gesture has been recognized
         """
     def __init__(self, pd_score=None, pd_box=None, pd_kps=None):
         self.pd_score = pd_score # Palm detection score 
