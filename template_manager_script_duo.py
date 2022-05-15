@@ -105,6 +105,7 @@ lm_input_size = 224
 
 detected_hands = []
 
+reuse_prev_image = False
 
 
 while True:
@@ -165,11 +166,12 @@ while True:
         cfg.setCropRotatedRect(rr, True)
         cfg.setResize(lm_input_size, lm_input_size)
         ${_IF_USE_SAME_IMAGE}
-        cfg.setReusePreviousImage(False if i == last_hand else True)
+        reuse_prev_image = True if len(detected_hands) > 1 and i == last_hand else False
+        cfg.setReusePreviousImage(reuse_prev_image)
         ${_IF_USE_SAME_IMAGE}
         node.io['pre_lm_manip_cfg'].send(cfg)
         nb_lm_inf += 1
-        ${_TRACE2} ("Manager sent config to pre_lm manip")
+        ${_TRACE2} (f"Manager sent config to pre_lm manip (reuse previous frame = {reuse_prev_image})")
 
     hand_landmarks = dict([("lm_score", []), ("handedness", []), ("rotation", []),
                      ("rect_center_x", []), ("rect_center_y", []), ("rect_size", []), ("rrn_lms", []), ('sqn_lms', []),
@@ -207,7 +209,6 @@ while True:
             xyz_zone = 0
             # Query xyz
             ${_IF_XYZ}
-            cfg = SpatialLocationCalculatorConfig()
             conf_data = SpatialLocationCalculatorConfigData()
             conf_data.depthThresholds.lowerThreshold = 100
             conf_data.depthThresholds.upperThreshold = 10000

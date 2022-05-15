@@ -173,7 +173,6 @@ while True:
         xyz_zone = 0
         # Query xyz
         ${_IF_XYZ}
-        cfg = SpatialLocationCalculatorConfig()
         conf_data = SpatialLocationCalculatorConfigData()
         conf_data.depthThresholds.lowerThreshold = 100
         conf_data.depthThresholds.upperThreshold = 10000
