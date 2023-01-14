@@ -592,8 +592,8 @@ class Body:
         self.score_thresh = score_thresh
         self.crop_region = crop_region
         self.next_crop_region = next_crop_region
-        # self.keypoints_square = (self.keypoints_norm * self.crop_region.size).astype(np.int)
-        self.keypoints = (np.array([self.crop_region.xmin, self.crop_region.ymin]) + self.keypoints_norm * self.crop_region.size).astype(np.int)
+        # self.keypoints_square = (self.keypoints_norm * self.crop_region.size).astype(np.int32)
+        self.keypoints = (np.array([self.crop_region.xmin, self.crop_region.ymin]) + self.keypoints_norm * self.crop_region.size).astype(np.int32)
 
     def print(self):
         attrs = vars(self)

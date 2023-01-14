@@ -73,7 +73,7 @@ class HandTracker3DRenderer:
     def draw_hand(self, hand, i):
         if self.mode_3d == "image":
             # Denormalize z-component of 'norm_landmarks'
-            lm_z = (hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4).astype(np.int)
+            lm_z = (hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4).astype(np.int32)
             # ... and concatenates with x and y components of 'landmarks'
             points = np.hstack((hand.landmarks, lm_z))
             radius = hand.rect_w_a / 30 # Thickness of segments depends on the hand size

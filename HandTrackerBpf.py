@@ -489,7 +489,7 @@ class HandTrackerBpf:
             mat = cv2.getAffineTransform(src, dst)
             lm_xy = np.expand_dims(hand.norm_landmarks[:,:2], axis=0)
             # lm_z = hand.norm_landmarks[:,2:3] * hand.rect_w_a  / 0.4
-            hand.landmarks = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int)
+            hand.landmarks = np.squeeze(cv2.transform(lm_xy, mat)).astype(np.int32)
 
             # World landmarks
             if self.use_world_landmarks:

@@ -483,7 +483,7 @@ class HandTrackerBpf:
         hand.handedness = res["handedness"][hand_idx]
         hand.label = "right" if hand.handedness > 0.5 else "left"
         hand.norm_landmarks = np.array(res['rrn_lms'][hand_idx]).reshape(-1,3)
-        hand.landmarks = (np.array(res["sqn_lms"][hand_idx]) * self.frame_size).reshape(-1,2).astype(np.int)
+        hand.landmarks = (np.array(res["sqn_lms"][hand_idx]) * self.frame_size).reshape(-1,2).astype(np.int32)
         if self.xyz:
             hand.xyz = np.array(res["xyz"][hand_idx])
             hand.xyz_zone = res["xyz_zone"][hand_idx]
